@@ -520,10 +520,247 @@ cdef csoundSetFileOpenCallback(cs.CSOUND *p, void (*func)(cs.CSOUND*, const char
         int    a file type code from the enumeration cs.CSOUND_FILETYPES
         int    1 if Csound is writing the file, 0 if reading
         int    1 if a temporary file that Csound will delete; 0 if not
-     *
+
     Pass NULL to disable the callback.
     This callback is retained after a csoundReset() call.
     """
     cs.csoundSetFileOpenCallback(p, func)
+
+## ----------------------------------------------------------------------------
+## Realtime Audio I/O
+
+cdef csoundSetRTAudioModule(cs.CSOUND *c, const char *module):
+    """Sets the current RT audio module"""
+    cs.csoundSetRTAudioModule(c, module)
+
+cdef int csoundGetModule(cs.CSOUND *c, int number, char **name, char **type):
+    """retrieves a module name and type ("audio" or "midi") given a
+    number Modules are added to list as csound loads them returns
+    cs.CSOUND_SUCCESS on success and cs.CSOUND_ERROR if module number
+    was not found
+
+        char *name, *type;
+        int n = 0;
+        while(!csoundGetModule(csound, n++, &name, &type))
+            printf("Module %d:  %s (%s) \n", n, name, type);
+
+    """
+    return cs.csoundGetModule(c, number, name, type)
+
+
+cdef long csoundGetInputBufferSize(cs.CSOUND *c):
+    """Returns the number of samples in Csound's input buffer."""
+    return cs.csoundGetInputBufferSize(c)
+
+cdef long csoundGetOutputBufferSize(cs.CSOUND *c):
+    """Returns the number of samples in Csound's output buffer."""
+    return cs.csoundGetOutputBufferSize(c)
+
+cdef cs.MYFLT *csoundGetInputBuffer(cs.CSOUND *c):
+    """Returns the address of the Csound audio input buffer.
+
+    Enables external software to write audio into Csound before calling
+    csoundPerformBuffer.
+    """
+    return cs.csoundGetInputBuffer(c)
+
+cdef cs.MYFLT *csoundGetOutputBuffer(cs.CSOUND *c):
+    """Returns the address of the Csound audio output buffer.
+
+    Enables external software to read audio from Csound after calling
+    csoundPerformBuffer.
+    """
+    return cs.csoundGetOutputBuffer(c)
+
+cdef cs.MYFLT *csoundGetSpin(cs.CSOUND *c):
+    """Returns the address of the Csound audio input working buffer (spin).
+
+    Enables external software to write audio into Csound before calling
+    csoundPerformKsmps.
+    """
+    return cs.csoundGetSpin(c)
+
+cdef csoundClearSpin(cs.CSOUND *c):
+    """Clears the input buffer (spin)."""
+    cs.csoundClearSpin(c)
+
+
+cdef csoundAddSpinSample(cs.CSOUND *c, int frame, int channel, cs.MYFLT sample):
+    """Adds the indicated sample into the audio input working buffer (spin):
+    this only ever makes sense before calling csoundPerformKsmps().
+    The frame and channel must be in bounds relative to ksmps and nchnls.
+    NB: the spin buffer needs to be cleared at every k-cycle by calling
+    csoundClearSpinBuffer().
+    """
+    cs.csoundAddSpinSample(c, frame, channel, sample)
+
+cdef csoundSetSpinSample(cs.CSOUND *c, int frame, int channel, cs.MYFLT sample):
+    """Sets the audio input working buffer (spin) to the indicated sample
+    this only ever makes sense before calling csoundPerformKsmps().
+    The frame and channel must be in bounds relative to ksmps and nchnls.
+    """
+    cs.csoundSetSpinSample(c, frame, channel, sample)
+
+
+cdef cs.MYFLT *csoundGetSpout(cs.CSOUND *c):
+    """Returns the address of the Csound audio output working buffer (spout).
+    Enables external software to read audio from Csound after calling
+    csoundPerformKsmps.
+    """
+    return cs.csoundGetSpout(c)
+
+
+
+cdef cs.MYFLT csoundGetSpoutSample(cs.CSOUND *c, int frame, int channel):
+    """Returns the indicated sample from the Csound audio output
+    working buffer (spout): only ever makes sense after calling
+    csoundPerformKsmps().  The frame and channel must be in bounds
+    relative to ksmps and nchnls.
+    """
+    return cs.csoundGetSpoutSample(c, frame, channel)
+
+
+
+cdef void **csoundGetRtRecordUserData(cs.CSOUND *c):
+    """Return pointer to user data pointer for real time audio input."""
+    return cs.csoundGetRtRecordUserData(c)
+
+
+
+cdef void **csoundGetRtPlayUserData(cs.CSOUND *c):
+    """Return pointer to user data pointer for real time audio output."""
+    return cs.csoundGetRtPlayUserData(c)
+
+
+cdef csoundSetHostImplementedAudioIO(cs.CSOUND *c, int state, int bufSize):
+    """Calling this function with a non-zero 'state' value between
+    csoundCreate() and the start of performance will disable all default
+    handling of sound I/O by the Csound library, allowing the host
+    application to use the spin/spout/input/output buffers directly.
+    For applications using spin/spout, bufSize should be set to 0.
+    If 'bufSize' is greater than zero, the buffer size (-b) in frames will be
+    set to the integer multiple of ksmps that is nearest to the value
+    specified.
+    """
+    cs.csoundSetHostImplementedAudioIO(c, state, bufSize)
+
+
+cdef int csoundGetAudioDevList(cs.CSOUND *c, cs.CS_AUDIODEVICE *list, int isOutput):
+    """This function can be called to obtain a list of available
+    input or output audio devices. If list is NULL, the function
+    will only return the number of devices (isOutput=1 for out
+    devices, 0 for in devices).
+
+    If list is non-NULL, then it should contain enough memory for
+    one CS_AUDIODEVICE structure per device.
+    Hosts will typically call this function twice: first to obtain
+    a number of devices, then, after allocating space for each
+    device information structure, pass an array of CS_AUDIODEVICE
+    structs to be filled:
+
+        int i,n = csoundGetAudioDevList(csound,NULL,1);
+        CS_AUDIODEVICE *devs = (CS_AUDIODEVICE *)
+          malloc(n*sizeof(CS_AUDIODEVICE)):
+        csoundGetAudioDevList(csound,devs,1):
+        for(i=0; i < n; i++)
+          csound->Message(csound, " %d: %s (%s)\n",
+                i, devs[i].device_id, devs[i].device_name):
+        free(devs);
+    """
+    return cs.csoundGetAudioDevList(c, list, isOutput)
+
+
+cdef csoundSetPlayopenCallback(cs.CSOUND *c, int (*playopen__)(cs.CSOUND *, const cs.csRtAudioParams *parm) noexcept):
+    """Sets a function to be called by Csound for opening real-time audio playback."""
+    cs.csoundSetPlayopenCallback(c, playopen__)
+
+cdef csoundSetRtplayCallback(cs.CSOUND *c, void (*rtplay__)(cs.CSOUND *, const cs.MYFLT *outBuf, int nbytes) noexcept):
+    """ Sets a function to be called by Csound for performing real-time audio playback."""
+    cs.csoundSetRtplayCallback(c, rtplay__)
+
+cdef csoundSetRecopenCallback(cs.CSOUND *c, int (*recopen_)(cs.CSOUND *, const cs.csRtAudioParams *parm) noexcept):
+    """Sets a function to be called by Csound for opening real-time audio recording."""
+    cs.csoundSetRecopenCallback(c, recopen_)
+
+cdef csoundSetRtrecordCallback(cs.CSOUND *c, int (*rtrecord__)(cs.CSOUND *, cs.MYFLT *inBuf, int nbytes) noexcept):
+    """Sets a function to be called by Csound for performing real-time audio recording."""
+    cs.csoundSetRtrecordCallback(c, rtrecord__)
+
+cdef csoundSetRtcloseCallback(cs.CSOUND *c, void (*rtclose__)(cs.CSOUND *) noexcept):
+    """Sets a function to be called by Csound for closing real-time audio playback and recording."""
+    cs.csoundSetRtcloseCallback(c, rtclose__)
+
+cdef csoundSetAudioDeviceListCallback(cs.CSOUND *c, int (*audiodevlist__)(cs.CSOUND *, cs.CS_AUDIODEVICE *list, int isOutput) noexcept):
+    """Sets a function that is called to obtain a list of audio devices.
+    
+    This should be set by rtaudio modules and should not be set by hosts.
+    (See csoundGetAudioDevList())
+    """
+    cs.csoundSetAudioDeviceListCallback(c, audiodevlist__)
+
+
+## ----------------------------------------------------------------------------
+## Realtime MIDI I/O
+
+cdef csoundSetMIDIModule(cs.CSOUND *c, const char *module):
+    """Sets the current MIDI IO module"""
+    cs.csoundSetMIDIModule(c, module)
+
+cdef csoundSetHostImplementedMIDIIO(cs.CSOUND *c, int state):
+    """call this function with state 1 if the host is implementing
+    MIDI via the callbacks below.
+    """
+    cs.csoundSetHostImplementedMIDIIO(c, state)
+
+cdef int csoundGetMIDIDevList(cs.CSOUND *c, cs.CS_MIDIDEVICE *list, int isOutput):
+    """Obtain a list of available input or output midi devices. 
+
+    If list is NULL, the function will only return the number of devices
+    (isOutput=1 for out devices, 0 for in devices).
+
+    If list is non-NULL, then it should contain enough memory for
+    one CS_MIDIDEVICE structure per device.
+
+    Hosts will typically call this function twice: first to obtain
+    a number of devices, then, after allocating space for each
+    device information structure, pass an array of CS_MIDIDEVICE
+    structs to be filled. (see also csoundGetAudioDevList())
+    """
+    return cs.csoundGetMIDIDevList(c, list, isOutput)
+
+cdef csoundSetExternalMidiInOpenCallback(cs.CSOUND *c, int (*func)(cs.CSOUND *, void **userData, const char *devName) noexcept):
+    """Sets callback for opening real time MIDI input."""
+    cs.csoundSetExternalMidiInOpenCallback(c, func)
+
+cdef csoundSetExternalMidiReadCallback(cs.CSOUND *c, int (*func)(cs.CSOUND *, void *userData, unsigned char *buf, int nBytes) noexcept):
+    """Sets callback for reading from real time MIDI input."""
+    cs.csoundSetExternalMidiReadCallback(c, func)
+
+cdef csoundSetExternalMidiInCloseCallback(cs.CSOUND *c, int (*func)(cs.CSOUND *, void *userData) noexcept):
+    """Sets callback for closing real time MIDI input."""
+    cs.csoundSetExternalMidiInCloseCallback(c, func)
+
+cdef csoundSetExternalMidiOutOpenCallback(cs.CSOUND *c, int (*func)(cs.CSOUND *, void **userData, const char *devName) noexcept):
+    """Sets callback for opening real time MIDI output."""
+    cs.csoundSetExternalMidiOutOpenCallback(c, func)
+
+cdef csoundSetExternalMidiWriteCallback(cs.CSOUND *c, int (*func)(cs.CSOUND *, void *userData, const unsigned char *buf, int nBytes) noexcept):
+    """Sets callback for writing to real time MIDI output."""
+    cs.csoundSetExternalMidiWriteCallback(c, func)
+
+cdef csoundSetExternalMidiOutCloseCallback(cs.CSOUND *c, int (*func)(cs.CSOUND *, void *userData) noexcept):
+    """Sets callback for closing real time MIDI output."""
+    cs.csoundSetExternalMidiOutCloseCallback(c, func)
+
+cdef csoundSetExternalMidiErrorStringCallback(cs.CSOUND *c, const char *(*func)(int) noexcept):
+    """Sets callback for converting MIDI error codes to strings."""
+    cs.csoundSetExternalMidiErrorStringCallback(c, func)
+
+cdef csoundSetMIDIDeviceListCallback(cs.CSOUND *c, int (*mididevlist__)(cs.CSOUND *, cs.CS_MIDIDEVICE *list, int isOutput) noexcept):
+    """Sets a function that is called to obtain a list of MIDI devices.
+    This should be set by IO plugins, and should not be used by hosts.
+    (See csoundGetMIDIDevList())
+    """
+    cs.csoundSetMIDIDeviceListCallback(c, mididevlist__)
 
 
