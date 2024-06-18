@@ -1,4 +1,4 @@
-cimport csound
+cimport csound as cs
 
 from libc.stdio cimport printf, fprintf, stderr, FILE
 from posix.unistd cimport sleep
@@ -19,10 +19,23 @@ def csoundInitialize(flags: int) -> int:
     Return value is zero on success, positive if initialisation was
     done already, and negative on error.
     """
-    return csound.csoundInitialize(flags)
+    return cs.csoundInitialize(flags)
 
 
 
-def csoundSetOpcodedir(s: str):
-    """Sets an opcodedir override for csoundCreate()"""
-    csoundSetOpcodedir(s.encode())
+cdef cs.CSOUND *csoundCreate(void *hostData):
+    """Creates an instance of Csound.
+
+    Returns an opaque pointer that
+    must be passed to most Csound API functions.  The hostData
+    parameter can be NULL, or it can be a pointer to any sort of
+    data; this pointer can be accessed from the Csound instance
+    that is passed to callback routines.
+    """
+    return cs.csoundCreate(hostData)
+
+# def csoundSetOpcodedir(s: str):
+#     """Sets an opcodedir override for csoundCreate()"""
+#     csound.csoundSetOpcodedir(s.encode())
+
+
