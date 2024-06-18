@@ -8,6 +8,9 @@ from posix.unistd cimport sleep
 # from libc.string cimport strcpy, strlen
 # from libc.stdlib cimport malloc
 
+## ----------------------------------------------------------------------------
+## Instantiation
+
 def csoundInitialize(flags: int) -> int:
     """Initialise Csound library with specific flags. 
 
@@ -225,4 +228,302 @@ cdef int csoundCompileCsd(cs.CSOUND *c, const char *csd_filename):
     \endcode
     """
     return cs.csoundCompileCsd(c, csd_filename)
+
+
+cdef int csoundCompileCsdText(cs.CSOUND *c, const char *csd_text):
+    """Behaves the same way as csoundCompileCsd, except that the content
+    of the CSD is read from the csd_text string rather than from a file.
+
+    This is convenient when it is desirable to package the csd as part of
+    an application or a multi-language piece.
+    """
+    return cs.csoundCompileCsdText(c, csd_text)
+
+
+cdef int csoundPerform(cs.CSOUND *c):
+    """Senses input events and performs audio output until the end of score
+    is reached (positive return value), an error occurs (negative return
+    value), or performance is stopped by calling csoundStop() from another
+    thread (zero return value).
+
+    Note that csoundCompile() or csoundCompileOrc(), csoundReadScore(),
+    csoundStart() must be called first.
+    In the case of zero return value, csoundPerform() can be called again
+    to continue the stopped performance. Otherwise, csoundReset() should be
+    called to clean up after the finished or failed performance.
+    """
+    return cs.csoundPerform(c)
+
+cdef int csoundPerformKsmps(cs.CSOUND *c):
+    """Senses input events, and performs one control sample worth (ksmps) of
+    audio output.
+
+    Note that csoundCompile() or csoundCompileOrc(), csoundReadScore(),
+    csoundStart() must be called first.
+    Returns false during performance, and true when performance is finished.
+    If called until it returns true, will perform an entire score.
+    Enables external software to control the execution of Csound,
+    and to synchronize performance with audio input and output.
+    """
+    return cs.csoundPerformKsmps(c)
+
+
+cdef int csoundPerformBuffer(cs.CSOUND *c):
+    """Performs Csound, sensing real-time and score events
+    and processing one buffer's worth (-b frames) of interleaved audio.
+
+    Note that csoundCompile must be called first, then call
+    csoundGetOutputBuffer() and csoundGetInputBuffer() to get the pointer
+    to csound's I/O buffers.
+    Returns false during performance, and true when performance is finished.
+    """
+    return cs.csoundPerformBuffer(c)
+
+
+cdef csoundStop(cs.CSOUND *c):
+    """Stops a csoundPerform() running in another thread.
+
+    Note that it is not guaranteed that csoundPerform() has already 
+    stopped when this function returns.
+    """
+    cs.csoundStop(c)
+
+
+cdef int csoundCleanup(cs.CSOUND *c):
+    """Prints information about the end of a performance, and closes audio
+    and MIDI devices.
+
+    Note: after calling csoundCleanup(), the operation of the perform
+    functions is undefined.
+    """
+    return cs.csoundCleanup(c)
+
+cdef csoundReset(cs.CSOUND *c):
+    """Resets all internal memory and state in preparation for a new performance.
+
+    Enables external software to run successive Csound performances
+    without reloading Csound. Implies csoundCleanup(), unless already called.
+    """
+    cs.csoundReset(c)
+
+## ----------------------------------------------------------------------------
+## UDP server
+
+
+cdef int csoundUDPServerStart(cs.CSOUND *c, unsigned int port):
+    """Starts the UDP server on a supplied port number.
+
+    Returns cs.CSOUND_SUCCESS if server has been started successfully,
+    otherwise, cs.CSOUND_ERROR.
+    """
+    return cs.csoundUDPServerStart(c, port)
+
+
+cdef int csoundUDPServerStatus(cs.CSOUND *c):
+    """Returns the port number on which the server is running, or
+     cs.CSOUND_ERROR if the server is not running.
+    """
+    return cs.csoundUDPServerStatus(c)
+
+
+cdef int csoundUDPServerClose(cs.CSOUND *c):
+    """Closes the UDP server, returning cs.CSOUND_SUCCESS if the
+    running server was successfully closed, cs.CSOUND_ERROR otherwise.
+    """
+    return cs.csoundUDPServerClose(c)
+
+
+cdef int csoundUDPConsole(cs.CSOUND *c, const char *addr, int port, int mirror):
+    """Turns on the transmission of console messages to UDP on address addr
+    port port.
+
+    If mirror is one, the messages will continue to be
+    sent to the usual destination (see csoundSetMessaggeCallback())
+    as well as to UDP.
+    
+    Returns cs.CSOUND_SUCCESS or cs.CSOUND_ERROR if the UDP transmission
+    could not be set up.
+    """
+    return cs.csoundUDPConsole(c, addr, port, mirror)
+                            
+
+cdef csoundStopUDPConsole(cs.CSOUND *c):
+    """Stop transmitting console messages via UDP."""
+    cs.csoundStopUDPConsole(c)
+
+## ----------------------------------------------------------------------------
+## Attributes
+
+
+cdef cs.MYFLT csoundGetSr(cs.CSOUND *c):
+    """Returns the number of audio sample frames per second."""
+    return cs.csoundGetSr(c)
+
+cdef cs.MYFLT csoundGetKr(cs.CSOUND *c):
+    """Returns the number of control samples per second."""
+    return cs.csoundGetKr(c)
+
+cdef cs.uint32_t csoundGetKsmps(cs.CSOUND *c):
+    """Returns the number of audio sample frames per control sample."""
+    return cs.csoundGetKsmps(c)
+
+cdef cs.uint32_t csoundGetNchnls(cs.CSOUND *c):
+    """Returns the number of audio output channels.
+
+    Set through the nchnls header variable in the csd file.
+    """
+    return cs.csoundGetNchnls(c)
+
+cdef cs.uint32_t csoundGetNchnlsInput(cs.CSOUND *c):
+    """Returns the number of audio input channels.
+
+    Set through the nchnls_i header variable in the csd file. If this variable is
+    not set, the value is taken from nchnls.
+    """
+    return cs.csoundGetNchnlsInput(c)
+
+cdef cs.MYFLT csoundGet0dBFS(cs.CSOUND *c):
+    """Returns the 0dBFS level of the spin/spout buffers."""
+    return cs.csoundGet0dBFS(c)
+
+cdef cs.MYFLT csoundGetA4(cs.CSOUND *c):
+    """Returns the A4 frequency reference."""
+    return cs.csoundGetA4(c)
+
+cdef cs.int64_t csoundGetCurrentTimeSamples(cs.CSOUND *c):
+    """Return the current performance time in samples."""
+    return cs.csoundGetCurrentTimeSamples(c)
+
+cdef int csoundGetSizeOfMYFLT():
+    """Return the size of MYFLT in bytes."""
+    return cs.csoundGetSizeOfMYFLT()
+
+cdef void *csoundGetHostData(cs.CSOUND *c):
+    """Returns host data."""
+    return csoundGetHostData(c)
+
+cdef csoundSetHostData(cs.CSOUND *c, void *hostData):
+    """Sets host data."""
+    cs.csoundSetHostData(c, hostData)
+
+cdef int csoundSetOption(cs.CSOUND *c, const char *option):
+    """Set a single csound option (flag). Returns cs.CSOUND_SUCCESS on success.
+    NB: blank spaces are not allowed
+    """
+    return cs.csoundSetOption(c, option)
+
+cdef csoundSetParams(cs.CSOUND *c, cs.CSOUND_PARAMS *p):
+    """Configure Csound with a given set of parameters defined in
+    the cs.CSOUND_PARAMS structure. 
+
+    These parameters are the part of the OPARMS struct that are configurable 
+    through command line flags.
+    
+    The cs.CSOUND_PARAMS structure can be obtained using csoundGetParams().
+    These options should only be changed before performance has started.
+    """
+    cs.csoundSetParams(c, p)
+
+cdef csoundGetParams(cs.CSOUND *c, cs.CSOUND_PARAMS *p):
+    """Get the current set of parameters from a cs.CSOUND instance in
+    a cs.CSOUND_PARAMS structure. See csoundSetParams().
+    """
+    cs.csoundSetParams(c, p)
+
+cdef int csoundGetDebug(cs.CSOUND *c):
+    """Returns whether Csound is set to print debug messages sent through the
+    DebugMsg() internal API function. Anything different to 0 means true.
+    """
+    return cs.csoundGetDebug(c)
+
+cdef csoundSetDebug(cs.CSOUND *c, int debug):
+    """Sets whether Csound prints debug messages from the DebugMsg() internal
+    API function. Anything different to 0 means true.
+    """
+    cs.csoundSetDebug(c, debug)
+
+cdef cs.MYFLT csoundSystemSr(cs.CSOUND *c, cs.MYFLT val):
+    """If val > 0, sets the internal variable holding the system HW sr.
+    Returns the stored value containing the system HW sr.
+    """
+    return cs.csoundSystemSr(c, val)
+
+## ----------------------------------------------------------------------------
+## General Input/Output
+
+# Setting the device or filename name for Csound input and output. These
+# functions are used to set the input and output command line flags that
+# apply to both input and output of audio and MIDI. See command line flags
+# -o, -i, -M and -Q in the Csound Reference Manual.
+
+cdef const char *csoundGetOutputName(cs.CSOUND *c):
+    """Returns the audio output name (-o)."""
+    return cs.csoundGetOutputName(c)
+
+
+cdef const char *csoundGetInputName(cs.CSOUND *c):
+    """Returns the audio input name (-i)."""
+    return cs.csoundGetInputName(c)
+
+
+cdef csoundSetOutput(cs.CSOUND *c, const char *name, const char *type, const char *format):
+    """Set output destination, type and format.
+
+    type can be one of  "wav","aiff", "au","raw", "paf", "svx", "nist", "voc",
+    "ircam","w64","mat4", "mat5", "pvf","xi", "htk","sds","avr","wavex","sd2",
+    "flac", "caf","wve","ogg","mpc2k","rf64", or NULL (use default or
+    realtime IO).
+
+    format can be one of "alaw", "schar", "uchar", "float", "double", "long",
+    "short", "ulaw", "24bit", "vorbis", or NULL (use default or realtime IO).
+    For RT audio, use device_id from CS_AUDIODEVICE for a given audio device.
+    """
+    cs.csoundSetOutput(c, name, type, format)
+
+cdef csoundGetOutputFormat(cs.CSOUND *c, char *type, char *format):
+    """Get output type and format.
+    
+    type should have space for at least 5 chars excluding termination,
+    and format should have space for at least 7 chars.
+    
+    On return, these will hold the current values for
+    these parameters.
+    """
+    cs.csoundGetOutputFormat(c, type, format)
+
+cdef csoundSetInput(cs.CSOUND *c, const char *name):
+    """Set input source."""
+    cs.csoundSetInput(c, name)
+
+cdef csoundSetMIDIInput(cs.CSOUND *c, const char *name):
+    """Set MIDI input device name/number"""
+    cs.csoundSetMIDIInput(c, name)
+
+cdef csoundSetMIDIFileInput(cs.CSOUND *c, const char *name):
+    """Set MIDI file input name"""
+    cs.csoundSetMIDIFileInput(c, name)
+
+cdef csoundSetMIDIOutput(cs.CSOUND *c, const char *name):
+    """Set MIDI output device name/numbe"""
+    cs.csoundSetMIDIOutput(c, name)
+
+cdef csoundSetMIDIFileOutput(cs.CSOUND *c, const char *name):
+    """Set MIDI file output name"""
+    cs.csoundSetMIDIFileOutput(c, name)
+
+
+cdef csoundSetFileOpenCallback(cs.CSOUND *p, void (*func)(cs.CSOUND*, const char*, int, int, int) noexcept):
+    """Sets an external callback for receiving notices whenever Csound opens
+    a file.  The callback is made after the file is successfully opened.
+    The following information is passed to the callback:
+        char*  pathname of the file; either full or relative to current dir
+        int    a file type code from the enumeration cs.CSOUND_FILETYPES
+        int    1 if Csound is writing the file, 0 if reading
+        int    1 if a temporary file that Csound will delete; 0 if not
+     *
+    Pass NULL to disable the callback.
+    This callback is retained after a csoundReset() call.
+    """
+    cs.csoundSetFileOpenCallback(p, func)
+
 

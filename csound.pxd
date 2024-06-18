@@ -15,6 +15,9 @@ cdef extern from "csound.h":
     #define MYFLT double
     #endif
     """
+
+    # Platform-dependent definitions and declarations.
+    
     ctypedef float MYFLT
     cdef enum CSOUND_STATUS:
         CSOUND_SUCCESS = 0
