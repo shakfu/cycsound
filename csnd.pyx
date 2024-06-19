@@ -88,8 +88,8 @@ cdef class Csound:
         """Loads all plugins from a given directory."""
         return cs.csoundLoadPlugins(self.ptr, directory.encode())
 
-    # ----------------------------------------------------------------------------
-    # Performance
+    ## ----------------------------------------------------------------------------
+    ## Performance
 
     cdef cs.TREE *parse_orc(self, str orc):
         """Parse the given orchestra from an ASCII string into a TREE.
@@ -857,7 +857,7 @@ cdef class Csound:
         cs.csoundSetCscoreCallback(self.ptr, cscoreCallback_)
 
 
-    cdef int csoundScoreSort(self, stdio.FILE *inFile, stdio.FILE *outFile):
+    cdef int score_sort(self, stdio.FILE *inFile, stdio.FILE *outFile):
         """Sorts score file 'inFile' and writes the result to 'outFile'.
         The Csound instance should be initialised
         before calling this function, and csoundReset() should be called
@@ -866,7 +866,7 @@ cdef class Csound:
         return cs.csoundScoreSort(self.ptr, inFile, outFile)
 
 
-    cdef int csoundScoreExtract(self, stdio.FILE *inFile, stdio.FILE *outFile, stdio.FILE *extractFile):
+    cdef int score_extract(self, stdio.FILE *inFile, stdio.FILE *outFile, stdio.FILE *extractFile):
         """Extracts from 'inFile', controlled by 'extractFile', and writes
         the result to 'outFile'. The Csound instance should be initialised
         before calling this function, and csoundReset()
@@ -874,4 +874,213 @@ cdef class Csound:
         The return value is zero on success.
         """
         return cs.csoundScoreExtract(self.ptr, inFile, outFile, extractFile)
+
+
+    ## ----------------------------------------------------------------------------
+    ## Messages and Text
+
+    # cdef CS_PRINTF2 void csoundMessage(self, const char* format, ...)
+    #     """Displays an informational message."""
+
+    # cdef CS_PRINTF3 void csoundMessageS(self, int attr, const char* format, ...)
+    #     """Print message with special attributes (see msg_attr.h for the list of
+    #     available attributes). With attr=0, csoundMessageS() is identical to
+    #     csoundMessage().
+    #     """
+
+    # cdef void csoundMessageV(self, int attr, const char* format, va_list args)
+    
+    # cdef void csoundSetDefaultMessageCallback(void (*csoundMessageCallback_)(CSOUND*, int attr, const char* format, va_list valist))
+    
+    # cdef void csoundSetMessageCallback(self, void (*csoundMessageCallback_)(CSOUND*, int attr, const char* format,va_list valist))
+        # """Sets a function to be called by Csound to print an informational message.
+        # This callback is never called on --realtime mode
+        # """
+
+    cdef set_message_string_callback(self, void (*csoundMessageStrCallback)(cs.CSOUND* csound, int attr, const char* str) noexcept):
+        """Sets an alternative function to be called by Csound to print an
+        informational message, using a less granular signature.
+        This callback can be set for --realtime mode.
+        This callback is cleared after csoundReset
+        """
+        cs.csoundSetMessageStringCallback(self.ptr, csoundMessageStrCallback)
+
+
+    cdef int get_message_level(self):
+        """Returns the Csound message level (from 0 to 231)."""
+        return cs.csoundGetMessageLevel(self.ptr)
+
+    cdef set_message_level(self, int messageLevel):
+        """Sets the Csound message level (from 0 to 231)."""
+        cs.csoundSetMessageLevel(self.ptr, messageLevel)
+
+    cdef csoundCreateMessageBuffer(self, int toStdOut):
+        """Creates a buffer for storing messages printed by Csound.
+        Should be called after creating a Csound instance andthe buffer
+        can be freed by calling csoundDestroyMessageBuffer() before
+        deleting the Csound instance. You will generally want to call
+        csoundCleanup() to make sure the last messages are flushed to
+        the message buffer before destroying Csound.
+        If 'toStdOut' is non-zero, the messages are also printed to
+        stdout and stderr (depending on the type of the message),
+        in addition to being stored in the buffer.
+        Using the message buffer ties up the internal message callback, so
+        csoundSetMessageCallback should not be called after creating the
+        message buffer.
+        """
+        cs.csoundCreateMessageBuffer(self.ptr, toStdOut)
+
+    cdef const char* csoundGetFirstMessage(self):
+        """Returns the first message from the buffer."""
+        return cs.csoundGetFirstMessage(self.ptr)
+
+    cdef int csoundGetFirstMessageAttr(self):
+        """Returns the attribute parameter (see msg_attr.h) of the first message
+        in the buffer.
+        """
+        return cs.csoundGetFirstMessageAttr(self.ptr)
+
+    cdef csoundPopFirstMessage(self):
+        """Removes the first message from the buffer."""
+        cs.csoundPopFirstMessage(self.ptr)
+
+
+    cdef int csoundGetMessageCnt(self):
+        """Returns the number of pending messages in the buffer."""
+        return cs.csoundGetMessageCnt(self.ptr)
+
+
+    cdef csoundDestroyMessageBuffer(self):
+        """Releases all memory used by the message buffer."""
+        cs.csoundDestroyMessageBuffer(self.ptr)
+
+
+
+    # ## ----------------------------------------------------------------------------
+    # ## Channels, Control and Events
+    
+    # cdef int csoundGetChannelPtr(self, MYFLT** p, const char* name, int type)
+    # cdef int csoundListChannels(self, controlChannelInfo_t** lst)
+    # cdef void csoundDeleteChannelList(self, controlChannelInfo_t* lst)
+    # cdef int csoundSetControlChannelHints(self, const char* name, controlChannelHints_t hints)
+    # cdef int csoundGetControlChannelHints(self, const char* name, controlChannelHints_t* hints)
+    # cdef int* csoundGetChannelLock(self, const char* name)
+    # cdef MYFLT csoundGetControlChannel(self, const char* name, int* err)
+    # cdef void csoundSetControlChannel(self, const char* name, MYFLT val)
+    # cdef void csoundGetAudioChannel(self, const char* name, MYFLT* samples)
+    # cdef void csoundSetAudioChannel(self, const char* name, MYFLT* samples)
+    # cdef void csoundGetStringChannel(self, const char* name, char* string)
+    # cdef void csoundSetStringChannel(self, const char* name, char* string)
+    # cdef int csoundGetChannelDatasize(self, const char* name)
+    # # cdef void csoundSetInputChannelCallback(self, channelCallback_t inputChannelCalback)
+    # # cdef void csoundSetOutputChannelCallback(self, channelCallback_t outputChannelCalback)
+    # cdef int csoundSetPvsChannel(self, const PVSDATEXT* fin, const char* name)
+    # cdef int csoundGetPvsChannel(self, PVSDATEXT* fout, const char* name)
+    # cdef int csoundScoreEvent(self, char type, const MYFLT* pFields, long numFields)
+    # cdef void csoundScoreEventAsync(self, char type, const MYFLT* pFields, long numFields)
+    # cdef int csoundScoreEventAbsolute(self, char type, const MYFLT* pfields, long numFields, double time_ofs)
+    # cdef void csoundScoreEventAbsoluteAsync(self, char type, const MYFLT* pfields, long numFields, double time_ofs)
+    # cdef void csoundInputMessage(self, const char* message)
+    # cdef void csoundInputMessageAsync(self, const char* message)
+    # cdef int csoundKillInstance(self, MYFLT instr, char* instrName, int mode, int allow_release)
+    # cdef int csoundRegisterSenseEventCallback(self, void (*func)(CSOUND*, void*), void* userData)
+    # cdef void csoundKeyPress(self, char c)
+    # cdef int csoundRegisterKeyboardCallback(self, int (*func)(void* userData, void* p, unsigned int type), void* userData, unsigned int type)
+    # cdef void csoundRemoveKeyboardCallback(self, int (*func)(void*, void*, unsigned int))
+    
+    # ## ----------------------------------------------------------------------------
+    # ## Tables
+
+    # cdef int csoundTableLength(self, int table)
+    # cdef MYFLT csoundTableGet(self, int table, int index)
+    # cdef void csoundTableSet(self, int table, int index, MYFLT value)
+    # cdef void csoundTableCopyOut(self, int table, MYFLT* dest)
+    # cdef void csoundTableCopyOutAsync(self, int table, MYFLT* dest)
+    # cdef void csoundTableCopyIn(self, int table, MYFLT* src)
+    # cdef void csoundTableCopyInAsync(self, int table, MYFLT* src)
+    # cdef int csoundGetTable(self, MYFLT** tablePtr, int tableNum)
+    # cdef int csoundGetTableArgs(self, MYFLT** argsPtr, int tableNum)
+    # cdef int csoundIsNamedGEN(self, int num)
+    # cdef void csoundGetNamedGEN(CSOUND* csound, int num, char* name, int len)
+
+    # ## ----------------------------------------------------------------------------
+    # ## Function table display
+
+    # cdef int csoundSetIsGraphable(self, int isGraphable)
+    # cdef void csoundSetMakeGraphCallback(self, void (*makeGraphCallback_)(CSOUND*, WINDAT* windat, const char* name))
+    # cdef void csoundSetDrawGraphCallback(CSOUND*, void (*drawGraphCallback_)(CSOUND*, WINDAT* windat))
+    # cdef void csoundSetKillGraphCallback(CSOUND*, void (*killGraphCallback_)(CSOUND*, WINDAT* windat))
+    # cdef void csoundSetExitGraphCallback(CSOUND*, int (*exitGraphCallback_)(CSOUND*))
+
+    # ## ----------------------------------------------------------------------------
+    # ## Opcodes
+
+    # cdef void* csoundGetNamedGens(CSOUND*)
+    # cdef int csoundNewOpcodeList(CSOUND*, opcodeListEntry** opcodelist)
+    # cdef void csoundDisposeOpcodeList(CSOUND*, opcodeListEntry* opcodelist)
+    # cdef int csoundAppendOpcode(CSOUND*, const char* opname, int dsblksiz, int flags, int thread, const char* outypes, const char* intypes, int (*iopadr)(CSOUND*, void*), int (*kopadr)(CSOUND*, void*), int (*aopadr)(CSOUND*, void*))
+
+    # ## ----------------------------------------------------------------------------
+    # ## Threading and concurrency
+
+    # cdef void csoundSetYieldCallback(CSOUND*, int (*yieldCallback_)(CSOUND*))
+    # cdef void* csoundCreateThread(uintptr_t (*threadRoutine)(void*), void* userdata)
+    # cdef void* csoundCreateThread2(uintptr_t (*threadRoutine)(void*), unsigned int stack, void* userdata)
+    # cdef void* csoundGetCurrentThreadId()
+    # cdef uintptr_t csoundJoinThread(void* thread)
+    # cdef void* csoundCreateThreadLock()
+    # cdef int csoundWaitThreadLock(void* lock, size_t milliseconds)
+    # cdef void csoundWaitThreadLockNoTimeout(void* lock)
+    # cdef void csoundNotifyThreadLock(void* lock)
+    # cdef void csoundDestroyThreadLock(void* lock)
+    # cdef void* csoundCreateMutex(int isRecursive)
+    # cdef void csoundLockMutex(void* mutex_)
+    # cdef int csoundLockMutexNoWait(void* mutex_)
+    # cdef void csoundUnlockMutex(void* mutex_)
+    # cdef void csoundDestroyMutex(void* mutex_)
+    # cdef void* csoundCreateBarrier(unsigned int max)
+    # cdef int csoundDestroyBarrier(void* barrier)
+    # cdef int csoundWaitBarrier(void* barrier)
+    # cdef void* csoundCreateCondVar()
+    # cdef void csoundCondWait(void* condVar, void* mutex)
+    # cdef void csoundCondSignal(void* condVar)
+    # cdef void csoundDestroyCondVar(void* condVar)
+    # cdef void csoundSleep(size_t milliseconds)
+    # # cdef int csoundSpinLockInit(spin_lock_t* spinlock)
+    # # cdef void csoundSpinLock(spin_lock_t* spinlock)
+    # # cdef int csoundSpinTryLock(spin_lock_t* spinlock)
+    # # cdef void csoundSpinUnLock(spin_lock_t* spinlock)
+
+    # ## ----------------------------------------------------------------------------
+    # ## Miscellaneous functions
+
+    # cdef long csoundRunCommand(const char* const* argv, int noWait)
+    # cdef void csoundInitTimerStruct(RTCLOCK*)
+    # cdef double csoundGetRealTime(RTCLOCK*)
+    # cdef double csoundGetCPUTime(RTCLOCK*)
+    # cdef uint32_t csoundGetRandomSeedFromTime()
+    # cdef # void csoundSetLanguage(cslanguage_t lang_code)
+    # cdef const char* csoundGetEnv(CSOUND* csound, const char* name)
+    # cdef int csoundSetGlobalEnv(const char* name, const char* value)
+    # cdef int csoundCreateGlobalVariable(CSOUND*, const char* name, size_t nbytes)
+    # cdef void* csoundQueryGlobalVariable(CSOUND*, const char* name)
+    # cdef void* csoundQueryGlobalVariableNoCheck(CSOUND*, const char* name)
+    # cdef int csoundDestroyGlobalVariable(CSOUND*, const char* name)
+    # cdef int csoundRunUtility(CSOUND*, const char* name, int argc, char** argv)
+    # cdef char** csoundListUtilities(CSOUND*)
+    # cdef void csoundDeleteUtilityList(CSOUND*, char** lst)
+    # cdef const char* csoundGetUtilityDescription(CSOUND*, const char* utilName)
+    # cdef int csoundRand31(int* seedVal)
+    # cdef void csoundSeedRandMT(CsoundRandMTState* p, const uint32_t* initKey, uint32_t keyLength)
+    # cdef uint32_t csoundRandMT(CsoundRandMTState* p)
+    # cdef void* csoundCreateCircularBuffer(CSOUND* csound, int numelem, int elemsize)
+    # cdef int csoundReadCircularBuffer(CSOUND* csound, void* circular_buffer, void* out, int items)
+    # cdef int csoundPeekCircularBuffer(CSOUND* csound, void* circular_buffer, void* out, int items)
+    # cdef int csoundWriteCircularBuffer(CSOUND* csound, void* p, const void* inp, int items)
+    # cdef void csoundFlushCircularBuffer(CSOUND* csound, void* p)
+    # cdef void csoundDestroyCircularBuffer(CSOUND* csound, void* circularbuffer)
+    # cdef int csoundOpenLibrary(void** library, const char* libraryPath)
+    # cdef int csoundCloseLibrary(void* library)
+    # cdef void* csoundGetLibrarySymbol(void* library, const char* symbolName)
+
 
