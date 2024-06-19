@@ -789,3 +789,89 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Score Handling
 
+    cdef int read_score(self, str score):
+        """Read, preprocess, and load a score from an ASCII string
+        It can be called repeatedly, with the new score events
+        being added to the currently scheduled ones.
+        """
+        return cs.csoundReadScore(self.ptr, score.encode())
+
+    cdef read_score_async(self, str score):
+        """Asynchronous version of csoundReadScore()."""
+        return cs.csoundReadScoreAsync(self.ptr, score.encode())
+
+    cdef double get_score_time(self):
+        """Returns the current score time in seconds
+        since the beginning of performance.
+        """
+        return cs.csoundGetScoreTime(self.ptr)
+
+    cdef int is_score_pending(self):
+        """Sets whether Csound score events are performed or not, independently
+        of real-time MIDI events (see csoundSetScorePending()).
+        """
+        return cs.csoundIsScorePending(self.ptr)
+
+    cdef set_score_pending(self, int pending):
+        """Sets whether Csound score events are performed or not (real-time
+        events will continue to be performed). Can be used by external software,
+        such as a VST host, to turn off performance of score events (while
+        continuing to perform real-time events), for example to
+        mute a Csound score while working on other tracks of a piece, or
+        to play the Csound instruments live.
+        """
+        return cs.csoundSetScorePending(self.ptr, pending)
+
+    cdef cs.MYFLT get_score_offset_seconds(self):
+        """Returns the score time beginning at which score events will
+        actually immediately be performed (see csoundSetScoreOffsetSeconds()).
+        """
+        return cs.csoundGetScoreOffsetSeconds(self.ptr)
+
+
+    cdef set_score_offset_seconds(self, cs.MYFLT time):
+        """Csound score events prior to the specified time are not performed, and
+        performance begins immediately at the specified time (real-time events
+        will continue to be performed as they are received).
+
+        Can be used by external software, such as a VST host,
+        to begin score performance midway through a Csound score,
+        for example to repeat a loop in a sequencer, or to synchronize
+        other events with the Csound score.
+        """
+        return cs.csoundSetScoreOffsetSeconds(self.ptr, time)
+
+    def rewind_score(self):
+        """Rewinds a compiled Csound score to the time specified with
+        csoundSetScoreOffsetSeconds().
+        """
+        cs.csoundRewindScore(self.ptr)
+
+    cdef set_cscore_callback(self, void (*cscoreCallback_)(cs.CSOUND *) noexcept):
+        """Sets an external callback for Cscore processing.
+        Pass NULL to reset to the internal cscore() function
+        (which does nothing).
+
+        This callback is retained after a csoundReset() call.
+        """
+        cs.csoundSetCscoreCallback(self.ptr, cscoreCallback_)
+
+
+    cdef int csoundScoreSort(self, stdio.FILE *inFile, stdio.FILE *outFile):
+        """Sorts score file 'inFile' and writes the result to 'outFile'.
+        The Csound instance should be initialised
+        before calling this function, and csoundReset() should be called
+        after sorting the score to clean up. On success, zero is returned.
+        """
+        return cs.csoundScoreSort(self.ptr, inFile, outFile)
+
+
+    cdef int csoundScoreExtract(self, stdio.FILE *inFile, stdio.FILE *outFile, stdio.FILE *extractFile):
+        """Extracts from 'inFile', controlled by 'extractFile', and writes
+        the result to 'outFile'. The Csound instance should be initialised
+        before calling this function, and csoundReset()
+        should be called after score extraction to clean up.
+        The return value is zero on success.
+        """
+        return cs.csoundScoreExtract(self.ptr, inFile, outFile, extractFile)
+
