@@ -381,26 +381,26 @@ cdef class Csound:
     ## Attributes
 
 
-    cdef cs.MYFLT csoundGetSr(self):
+    cdef cs.MYFLT get_sr(self):
         """Returns the number of audio sample frames per second."""
         return cs.csoundGetSr(self.ptr)
 
-    cdef cs.MYFLT csoundGetKr(self):
+    cdef cs.MYFLT get_kr(self):
         """Returns the number of control samples per second."""
         return cs.csoundGetKr(self.ptr)
 
-    cdef cs.uint32_t csoundGetKsmps(self):
+    cdef cs.uint32_t get_ksmps(self):
         """Returns the number of audio sample frames per control sample."""
         return cs.csoundGetKsmps(self.ptr)
 
-    cdef cs.uint32_t csoundGetNchnls(self):
+    cdef cs.uint32_t get_nchnls(self):
         """Returns the number of audio output channels.
 
         Set through the nchnls header variable in the csd file.
         """
         return cs.csoundGetNchnls(self.ptr)
 
-    cdef cs.uint32_t csoundGetNchnlsInput(self):
+    cdef cs.uint32_t get_nchnls_input(self):
         """Returns the number of audio input channels.
 
         Set through the nchnls_i header variable in the csd file. If this variable is
@@ -408,33 +408,33 @@ cdef class Csound:
         """
         return cs.csoundGetNchnlsInput(self.ptr)
 
-    cdef cs.MYFLT csoundGet0dBFS(self):
+    cdef cs.MYFLT get_0dBFS(self):
         """Returns the 0dBFS level of the spin/spout buffers."""
         return cs.csoundGet0dBFS(self.ptr)
 
-    cdef cs.MYFLT csoundGetA4(self):
+    cdef cs.MYFLT get_A4(self):
         """Returns the A4 frequency reference."""
         return cs.csoundGetA4(self.ptr)
 
-    cdef cs.int64_t csoundGetCurrentTimeSamples(self):
+    cdef cs.int64_t get_current_time_samples(self):
         """Return the current performance time in samples."""
         return cs.csoundGetCurrentTimeSamples(self.ptr)
 
-    cdef void *csoundGetHostData(self):
+    cdef void *get_host_data(self):
         """Returns host data."""
         return cs.csoundGetHostData(self.ptr)
 
-    cdef csoundSetHostData(self, void *hostData):
+    cdef set_host_data(self, void *hostData):
         """Sets host data."""
         cs.csoundSetHostData(self.ptr, hostData)
 
-    cdef int csoundSetOption(self, const char *option):
+    cdef int set_option(self, const char *option):
         """Set a single csound option (flag). Returns cs.CSOUND_SUCCESS on success.
         NB: blank spaces are not allowed
         """
         return cs.csoundSetOption(self.ptr, option)
 
-    cdef csoundSetParams(self, cs.CSOUND_PARAMS *p):
+    cdef set_params(self, cs.CSOUND_PARAMS *p):
         """Configure Csound with a given set of parameters defined in
         the cs.CSOUND_PARAMS structure. 
 
@@ -446,25 +446,25 @@ cdef class Csound:
         """
         cs.csoundSetParams(self.ptr, p)
 
-    cdef csoundGetParams(self, cs.CSOUND_PARAMS *p):
+    cdef get_params(self, cs.CSOUND_PARAMS *p):
         """Get the current set of parameters from a cs.CSOUND instance in
         a cs.CSOUND_PARAMS structure. See csoundSetParams().
         """
         cs.csoundSetParams(self.ptr, p)
 
-    cdef int csoundGetDebug(self):
+    cdef int get_debug(self):
         """Returns whether Csound is set to print debug messages sent through the
         DebugMsg() internal API function. Anything different to 0 means true.
         """
         return cs.csoundGetDebug(self.ptr)
 
-    cdef csoundSetDebug(self, int debug):
+    cdef set_debug(self, int debug):
         """Sets whether Csound prints debug messages from the DebugMsg() internal
         API function. Anything different to 0 means true.
         """
         cs.csoundSetDebug(self.ptr, debug)
 
-    cdef cs.MYFLT csoundSystemSr(self, cs.MYFLT val):
+    cdef cs.MYFLT system_sr(self, cs.MYFLT val):
         """If val > 0, sets the internal variable holding the system HW sr.
         Returns the stored value containing the system HW sr.
         """
@@ -478,17 +478,17 @@ cdef class Csound:
     # apply to both input and output of audio and MIDI. See command line flags
     # -o, -i, -M and -Q in the Csound Reference Manual.
 
-    cdef const char *csoundGetOutputName(self):
+    cdef const char *get_output_name(self):
         """Returns the audio output name (-o)."""
         return cs.csoundGetOutputName(self.ptr)
 
 
-    cdef const char *csoundGetInputName(self):
+    cdef const char *get_input_name(self):
         """Returns the audio input name (-i)."""
         return cs.csoundGetInputName(self.ptr)
 
 
-    cdef csoundSetOutput(self, const char *name, const char *type, const char *format):
+    cdef set_output(self, const char *name, const char *type, const char *format):
         """Set output destination, type and format.
 
         type can be one of  "wav","aiff", "au","raw", "paf", "svx", "nist", "voc",
@@ -502,7 +502,7 @@ cdef class Csound:
         """
         cs.csoundSetOutput(self.ptr, name, type, format)
 
-    cdef csoundGetOutputFormat(self, char *type, char *format):
+    cdef get_output_format(self, char *type, char *format):
         """Get output type and format.
         
         type should have space for at least 5 chars excluding termination,
@@ -513,28 +513,28 @@ cdef class Csound:
         """
         cs.csoundGetOutputFormat(self.ptr, type, format)
 
-    cdef csoundSetInput(self, const char *name):
+    cdef set_input(self, const char *name):
         """Set input source."""
         cs.csoundSetInput(self.ptr, name)
 
-    cdef csoundSetMIDIInput(self, const char *name):
+    cdef set_midi_input(self, const char *name):
         """Set MIDI input device name/number"""
         cs.csoundSetMIDIInput(self.ptr, name)
 
-    cdef csoundSetMIDIFileInput(self, const char *name):
+    cdef set_midi_file_input(self, const char *name):
         """Set MIDI file input name"""
         cs.csoundSetMIDIFileInput(self.ptr, name)
 
-    cdef csoundSetMIDIOutput(self, const char *name):
+    cdef set_midi_output(self, const char *name):
         """Set MIDI output device name/numbe"""
         cs.csoundSetMIDIOutput(self.ptr, name)
 
-    cdef csoundSetMIDIFileOutput(self, const char *name):
+    cdef set_midi_file_output(self, const char *name):
         """Set MIDI file output name"""
         cs.csoundSetMIDIFileOutput(self.ptr, name)
 
 
-    cdef csoundSetFileOpenCallback(self, void (*func)(cs.CSOUND*, const char*, int, int, int) noexcept):
+    cdef set_file_open_callback(self, void (*func)(cs.CSOUND*, const char*, int, int, int) noexcept):
         """Sets an external callback for receiving notices whenever Csound opens
         a file.  The callback is made after the file is successfully opened.
         The following information is passed to the callback:
@@ -551,11 +551,11 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Realtime Audio I/O
 
-    cdef csoundSetRTAudioModule(self, const char *module):
+    cdef set_rtaudio_Module(self, const char *module):
         """Sets the current RT audio module"""
         cs.csoundSetRTAudioModule(self.ptr, module)
 
-    cdef int csoundGetModule(self, int number, char **name, char **type):
+    cdef int get_module(self, int number, char **name, char **type):
         """retrieves a module name and type ("audio" or "midi") given a
         number Modules are added to list as csound loads them returns
         cs.CSOUND_SUCCESS on success and cs.CSOUND_ERROR if module number
@@ -570,15 +570,15 @@ cdef class Csound:
         return cs.csoundGetModule(self.ptr, number, name, type)
 
 
-    cdef long csoundGetInputBufferSize(self):
+    cdef long get_input_buffersize(self):
         """Returns the number of samples in Csound's input buffer."""
         return cs.csoundGetInputBufferSize(self.ptr)
 
-    cdef long csoundGetOutputBufferSize(self):
+    cdef long get_output_buffersize(self):
         """Returns the number of samples in Csound's output buffer."""
         return cs.csoundGetOutputBufferSize(self.ptr)
 
-    cdef cs.MYFLT *csoundGetInputBuffer(self):
+    cdef cs.MYFLT *get_input_buffer(self):
         """Returns the address of the Csound audio input buffer.
 
         Enables external software to write audio into Csound before calling
@@ -586,7 +586,7 @@ cdef class Csound:
         """
         return cs.csoundGetInputBuffer(self.ptr)
 
-    cdef cs.MYFLT *csoundGetOutputBuffer(self):
+    cdef cs.MYFLT *get_output_buffer(self):
         """Returns the address of the Csound audio output buffer.
 
         Enables external software to read audio from Csound after calling
@@ -594,7 +594,7 @@ cdef class Csound:
         """
         return cs.csoundGetOutputBuffer(self.ptr)
 
-    cdef cs.MYFLT *csoundGetSpin(self):
+    cdef cs.MYFLT *get_spin(self):
         """Returns the address of the Csound audio input working buffer (spin).
 
         Enables external software to write audio into Csound before calling
@@ -602,12 +602,12 @@ cdef class Csound:
         """
         return cs.csoundGetSpin(self.ptr)
 
-    cdef csoundClearSpin(self):
+    cdef clear_spin(self):
         """Clears the input buffer (spin)."""
         cs.csoundClearSpin(self.ptr)
 
 
-    cdef csoundAddSpinSample(self, int frame, int channel, cs.MYFLT sample):
+    cdef add_spin_sample(self, int frame, int channel, cs.MYFLT sample):
         """Adds the indicated sample into the audio input working buffer (spin):
         this only ever makes sense before calling csoundPerformKsmps().
         The frame and channel must be in bounds relative to ksmps and nchnls.
@@ -616,7 +616,7 @@ cdef class Csound:
         """
         cs.csoundAddSpinSample(self.ptr, frame, channel, sample)
 
-    cdef csoundSetSpinSample(self, int frame, int channel, cs.MYFLT sample):
+    cdef set_spin_sample(self, int frame, int channel, cs.MYFLT sample):
         """Sets the audio input working buffer (spin) to the indicated sample
         this only ever makes sense before calling csoundPerformKsmps().
         The frame and channel must be in bounds relative to ksmps and nchnls.
@@ -624,7 +624,7 @@ cdef class Csound:
         cs.csoundSetSpinSample(self.ptr, frame, channel, sample)
 
 
-    cdef cs.MYFLT *csoundGetSpout(self):
+    cdef cs.MYFLT *get_spout(self):
         """Returns the address of the Csound audio output working buffer (spout).
         Enables external software to read audio from Csound after calling
         csoundPerformKsmps.
@@ -633,7 +633,7 @@ cdef class Csound:
 
 
 
-    cdef cs.MYFLT csoundGetSpoutSample(self, int frame, int channel):
+    cdef cs.MYFLT get_spout_sample(self, int frame, int channel):
         """Returns the indicated sample from the Csound audio output
         working buffer (spout): only ever makes sense after calling
         csoundPerformKsmps().  The frame and channel must be in bounds
@@ -643,18 +643,18 @@ cdef class Csound:
 
 
 
-    cdef void **csoundGetRtRecordUserData(self):
+    cdef void **get_rt_record_userdata(self):
         """Return pointer to user data pointer for real time audio input."""
         return cs.csoundGetRtRecordUserData(self.ptr)
 
 
 
-    cdef void **csoundGetRtPlayUserData(self):
+    cdef void **get_rt_play_userdata(self):
         """Return pointer to user data pointer for real time audio output."""
         return cs.csoundGetRtPlayUserData(self.ptr)
 
 
-    cdef csoundSetHostImplementedAudioIO(self, int state, int bufSize):
+    cdef set_host_implemented_audio_io(self, int state, int bufSize):
         """Calling this function with a non-zero 'state' value between
         csoundCreate() and the start of performance will disable all default
         handling of sound I/O by the Csound library, allowing the host
@@ -667,7 +667,7 @@ cdef class Csound:
         cs.csoundSetHostImplementedAudioIO(self.ptr, state, bufSize)
 
 
-    cdef int csoundGetAudioDevList(self, cs.CS_AUDIODEVICE *list, int isOutput):
+    cdef int get_audio_dev_list(self, cs.CS_AUDIODEVICE *list, int isOutput):
         """This function can be called to obtain a list of available
         input or output audio devices. If list is NULL, the function
         will only return the number of devices (isOutput=1 for out
@@ -692,27 +692,27 @@ cdef class Csound:
         return cs.csoundGetAudioDevList(self.ptr, list, isOutput)
 
 
-    cdef csoundSetPlayopenCallback(self, int (*playopen__)(cs.CSOUND *, const cs.csRtAudioParams *parm) noexcept):
+    cdef set_play_open_callback(self, int (*playopen__)(cs.CSOUND *, const cs.csRtAudioParams *parm) noexcept):
         """Sets a function to be called by Csound for opening real-time audio playback."""
         cs.csoundSetPlayopenCallback(self.ptr, playopen__)
 
-    cdef csoundSetRtplayCallback(self, void (*rtplay__)(cs.CSOUND *, const cs.MYFLT *outBuf, int nbytes) noexcept):
+    cdef set_rt_play_callback(self, void (*rtplay__)(cs.CSOUND *, const cs.MYFLT *outBuf, int nbytes) noexcept):
         """ Sets a function to be called by Csound for performing real-time audio playback."""
         cs.csoundSetRtplayCallback(self.ptr, rtplay__)
 
-    cdef csoundSetRecopenCallback(self, int (*recopen_)(cs.CSOUND *, const cs.csRtAudioParams *parm) noexcept):
+    cdef set_rec_open_callback(self, int (*recopen_)(cs.CSOUND *, const cs.csRtAudioParams *parm) noexcept):
         """Sets a function to be called by Csound for opening real-time audio recording."""
         cs.csoundSetRecopenCallback(self.ptr, recopen_)
 
-    cdef csoundSetRtrecordCallback(self, int (*rtrecord__)(cs.CSOUND *, cs.MYFLT *inBuf, int nbytes) noexcept):
+    cdef set_rt_record_callback(self, int (*rtrecord__)(cs.CSOUND *, cs.MYFLT *inBuf, int nbytes) noexcept):
         """Sets a function to be called by Csound for performing real-time audio recording."""
         cs.csoundSetRtrecordCallback(self.ptr, rtrecord__)
 
-    cdef csoundSetRtcloseCallback(self, void (*rtclose__)(cs.CSOUND *) noexcept):
+    cdef set_rt_closecallback(self, void (*rtclose__)(cs.CSOUND *) noexcept):
         """Sets a function to be called by Csound for closing real-time audio playback and recording."""
         cs.csoundSetRtcloseCallback(self.ptr, rtclose__)
 
-    cdef csoundSetAudioDeviceListCallback(self, int (*audiodevlist__)(cs.CSOUND *, cs.CS_AUDIODEVICE *list, int isOutput) noexcept):
+    cdef set_audio_device_list_callback(self, int (*audiodevlist__)(cs.CSOUND *, cs.CS_AUDIODEVICE *list, int isOutput) noexcept):
         """Sets a function that is called to obtain a list of audio devices.
         
         This should be set by rtaudio modules and should not be set by hosts.
@@ -724,17 +724,17 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Realtime MIDI I/O
 
-    cdef csoundSetMIDIModule(self, const char *module):
+    cdef set_midi_module(self, const char *module):
         """Sets the current MIDI IO module"""
         cs.csoundSetMIDIModule(self.ptr, module)
 
-    cdef csoundSetHostImplementedMIDIIO(self, int state):
+    cdef set_host_implemented_midi_io(self, int state):
         """call this function with state 1 if the host is implementing
         MIDI via the callbacks below.
         """
         cs.csoundSetHostImplementedMIDIIO(self.ptr, state)
 
-    cdef int csoundGetMIDIDevList(self, cs.CS_MIDIDEVICE *list, int isOutput):
+    cdef int get_midi_dev_list(self, cs.CS_MIDIDEVICE *list, int isOutput):
         """Obtain a list of available input or output midi devices. 
 
         If list is NULL, the function will only return the number of devices
@@ -750,35 +750,35 @@ cdef class Csound:
         """
         return cs.csoundGetMIDIDevList(self.ptr, list, isOutput)
 
-    cdef csoundSetExternalMidiInOpenCallback(self, int (*func)(cs.CSOUND *, void **userData, const char *devName) noexcept):
+    cdef set_external_midi_in_open_callback(self, int (*func)(cs.CSOUND *, void **userData, const char *devName) noexcept):
         """Sets callback for opening real time MIDI input."""
         cs.csoundSetExternalMidiInOpenCallback(self.ptr, func)
 
-    cdef csoundSetExternalMidiReadCallback(self, int (*func)(cs.CSOUND *, void *userData, unsigned char *buf, int nBytes) noexcept):
+    cdef set_external_midi_read_callback(self, int (*func)(cs.CSOUND *, void *userData, unsigned char *buf, int nBytes) noexcept):
         """Sets callback for reading from real time MIDI input."""
         cs.csoundSetExternalMidiReadCallback(self.ptr, func)
 
-    cdef csoundSetExternalMidiInCloseCallback(self, int (*func)(cs.CSOUND *, void *userData) noexcept):
+    cdef set_external_midi_in_close_callback(self, int (*func)(cs.CSOUND *, void *userData) noexcept):
         """Sets callback for closing real time MIDI input."""
         cs.csoundSetExternalMidiInCloseCallback(self.ptr, func)
 
-    cdef csoundSetExternalMidiOutOpenCallback(self, int (*func)(cs.CSOUND *, void **userData, const char *devName) noexcept):
+    cdef set_external_midi_out_open_callback(self, int (*func)(cs.CSOUND *, void **userData, const char *devName) noexcept):
         """Sets callback for opening real time MIDI output."""
         cs.csoundSetExternalMidiOutOpenCallback(self.ptr, func)
 
-    cdef csoundSetExternalMidiWriteCallback(self, int (*func)(cs.CSOUND *, void *userData, const unsigned char *buf, int nBytes) noexcept):
+    cdef set_external_midi_write_callback(self, int (*func)(cs.CSOUND *, void *userData, const unsigned char *buf, int nBytes) noexcept):
         """Sets callback for writing to real time MIDI output."""
         cs.csoundSetExternalMidiWriteCallback(self.ptr, func)
 
-    cdef csoundSetExternalMidiOutCloseCallback(self, int (*func)(cs.CSOUND *, void *userData) noexcept):
+    cdef set_external_midi_out_close_callback(self, int (*func)(cs.CSOUND *, void *userData) noexcept):
         """Sets callback for closing real time MIDI output."""
         cs.csoundSetExternalMidiOutCloseCallback(self.ptr, func)
 
-    cdef csoundSetExternalMidiErrorStringCallback(self, const char *(*func)(int) noexcept):
+    cdef set_external_midi_error_string_callback(self, const char *(*func)(int) noexcept):
         """Sets callback for converting MIDI error codes to strings."""
         cs.csoundSetExternalMidiErrorStringCallback(self.ptr, func)
 
-    cdef csoundSetMIDIDeviceListCallback(self, int (*mididevlist__)(cs.CSOUND *, cs.CS_MIDIDEVICE *list, int isOutput) noexcept):
+    cdef set_midi_device_list_callback(self, int (*mididevlist__)(cs.CSOUND *, cs.CS_MIDIDEVICE *list, int isOutput) noexcept):
         """Sets a function that is called to obtain a list of MIDI devices.
         This should be set by IO plugins, and should not be used by hosts.
         (See csoundGetMIDIDevList())
