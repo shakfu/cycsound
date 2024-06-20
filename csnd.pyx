@@ -23,6 +23,7 @@ def csoundInitialize(flags: int) -> int:
     """
     return cs.csoundInitialize(flags)
 
+# see: https://cython.readthedocs.io/en/latest/src/userguide/faq.html#what-is-the-difference-between-pyobject-and-object
 # cdef cs.CSOUND *csoundCreate(void *hostData):
 #     """Creates an instance of Csound.
 
@@ -34,19 +35,19 @@ def csoundInitialize(flags: int) -> int:
 #     """
 #     return cs.csoundCreate(hostData)
 
-def csoundSetOpcodedir(s: str):
+def set_opcode_dir(s: str):
     """Sets an opcodedir override for csoundCreate()"""
     cs.csoundSetOpcodedir(s.encode())
 
-def csoundGetVersion() -> int:
+def get_version() -> int:
     """Returns the version number times 1000 (5.00.0 = 5000)."""
     return cs.csoundGetVersion()
 
-def csoundGetAPIVersion() -> int:
+def get_api_version() -> int:
     """Returns the API version number times 100 (1.00 = 100)."""
     return cs.csoundGetAPIVersion()
 
-def csoundGetSizeOfMYFLT() -> int:
+def get_size_of_myflt() -> int:
     """Return the size of MYFLT in bytes."""
     return cs.csoundGetSizeOfMYFLT()
 
@@ -914,7 +915,7 @@ cdef class Csound:
         """Sets the Csound message level (from 0 to 231)."""
         cs.csoundSetMessageLevel(self.ptr, messageLevel)
 
-    cdef csoundCreateMessageBuffer(self, int toStdOut):
+    cdef create_message_buffer(self, int toStdOut):
         """Creates a buffer for storing messages printed by Csound.
         Should be called after creating a Csound instance andthe buffer
         can be freed by calling csoundDestroyMessageBuffer() before
@@ -930,157 +931,923 @@ cdef class Csound:
         """
         cs.csoundCreateMessageBuffer(self.ptr, toStdOut)
 
-    cdef const char* csoundGetFirstMessage(self):
+    cdef const char* get_first_message(self):
         """Returns the first message from the buffer."""
         return cs.csoundGetFirstMessage(self.ptr)
 
-    cdef int csoundGetFirstMessageAttr(self):
+    cdef int get_first_message_attr(self):
         """Returns the attribute parameter (see msg_attr.h) of the first message
         in the buffer.
         """
         return cs.csoundGetFirstMessageAttr(self.ptr)
 
-    cdef csoundPopFirstMessage(self):
+    cdef pop_first_message(self):
         """Removes the first message from the buffer."""
         cs.csoundPopFirstMessage(self.ptr)
 
-
-    cdef int csoundGetMessageCnt(self):
+    cdef int get_message_cnt(self):
         """Returns the number of pending messages in the buffer."""
         return cs.csoundGetMessageCnt(self.ptr)
 
-
-    cdef csoundDestroyMessageBuffer(self):
+    cdef destroy_message_buffer(self):
         """Releases all memory used by the message buffer."""
         cs.csoundDestroyMessageBuffer(self.ptr)
 
 
 
-    # ## ----------------------------------------------------------------------------
-    # ## Channels, Control and Events
+    ## ----------------------------------------------------------------------------
+    ## Channels, Control and Events
     
-    # cdef int csoundGetChannelPtr(self, MYFLT** p, const char* name, int type)
-    # cdef int csoundListChannels(self, controlChannelInfo_t** lst)
-    # cdef void csoundDeleteChannelList(self, controlChannelInfo_t* lst)
-    # cdef int csoundSetControlChannelHints(self, const char* name, controlChannelHints_t hints)
-    # cdef int csoundGetControlChannelHints(self, const char* name, controlChannelHints_t* hints)
-    # cdef int* csoundGetChannelLock(self, const char* name)
-    # cdef MYFLT csoundGetControlChannel(self, const char* name, int* err)
-    # cdef void csoundSetControlChannel(self, const char* name, MYFLT val)
-    # cdef void csoundGetAudioChannel(self, const char* name, MYFLT* samples)
-    # cdef void csoundSetAudioChannel(self, const char* name, MYFLT* samples)
-    # cdef void csoundGetStringChannel(self, const char* name, char* string)
-    # cdef void csoundSetStringChannel(self, const char* name, char* string)
-    # cdef int csoundGetChannelDatasize(self, const char* name)
-    # # cdef void csoundSetInputChannelCallback(self, channelCallback_t inputChannelCalback)
-    # # cdef void csoundSetOutputChannelCallback(self, channelCallback_t outputChannelCalback)
-    # cdef int csoundSetPvsChannel(self, const PVSDATEXT* fin, const char* name)
-    # cdef int csoundGetPvsChannel(self, PVSDATEXT* fout, const char* name)
-    # cdef int csoundScoreEvent(self, char type, const MYFLT* pFields, long numFields)
-    # cdef void csoundScoreEventAsync(self, char type, const MYFLT* pFields, long numFields)
-    # cdef int csoundScoreEventAbsolute(self, char type, const MYFLT* pfields, long numFields, double time_ofs)
-    # cdef void csoundScoreEventAbsoluteAsync(self, char type, const MYFLT* pfields, long numFields, double time_ofs)
-    # cdef void csoundInputMessage(self, const char* message)
-    # cdef void csoundInputMessageAsync(self, const char* message)
-    # cdef int csoundKillInstance(self, MYFLT instr, char* instrName, int mode, int allow_release)
-    # cdef int csoundRegisterSenseEventCallback(self, void (*func)(CSOUND*, void*), void* userData)
-    # cdef void csoundKeyPress(self, char c)
-    # cdef int csoundRegisterKeyboardCallback(self, int (*func)(void* userData, void* p, unsigned int type), void* userData, unsigned int type)
-    # cdef void csoundRemoveKeyboardCallback(self, int (*func)(void*, void*, unsigned int))
+    cdef int get_channel_ptr(self, cs.MYFLT** p, str name, int type):
+        """Stores a pointer to the specified channel of the bus in *p,
+        creating the channel first if it does not exist yet.
+
+        'type' must be the bitwise OR of exactly one of the following values,
+          cs.CSOUND_CONTROL_CHANNEL
+            control data (one MYFLT value)
+          cs.CSOUND_AUDIO_CHANNEL
+            audio data (csoundGetKsmps(csound) MYFLT values)
+          cs.CSOUND_STRING_CHANNEL
+            string data (MYFLT values with enough space to store
+            csoundGetChannelDatasize() characters, including the
+            NULL character at the end of the string)
+        and at least one of these:
+          cs.CSOUND_INPUT_CHANNEL
+          cs.CSOUND_OUTPUT_CHANNEL
+        If the channel already exists, it must match the data type
+        (control, audio, or string), however, the input/output bits are
+        OR'd with the new value. Note that audio and string channels
+        can only be created after calling csoundCompile(), because the
+        storage size is not known until then.
+
+        Return value is zero on success, or a negative error code,
+          cs.CSOUND_MEMORY  there is not enough memory for allocating the channel
+          cs.CSOUND_ERROR   the specified name or type is invalid
+        or, if a channel with the same name but incompatible type
+        already exists, the type of the existing channel. In the case
+        of any non-zero return value, *p is set to NULL.
+        Note: to find out the type of a channel without actually
+        creating or changing it, set 'type' to zero, so that the return
+        value will be either the type of the channel, or cs.CSOUND_ERROR
+        if it does not exist.
+
+        Operations on **p are not thread-safe by default. The host is required
+        to take care of threadsafety by
+        1) with control channels use __atomic_load() or
+           __atomic_store() gcc atomic builtins to get or set a channel,
+           if available.
+        2) For string and audio channels (and controls if option 1 is not
+           available), retrieve the channel lock with csoundGetChannelLock()
+           and use csoundSpinLock() and csoundSpinUnLock() to protect access
+           to **p.
+        See Top/threadsafe.c in the Csound library sources for
+        examples.  Optionally, use the channel get/set functions
+        provided below, which are threadsafe by default.
+        """
+        return cs.csoundGetChannelPtr(self.ptr, p, name.encode(), type)
+
     
-    # ## ----------------------------------------------------------------------------
-    # ## Tables
+    cdef int list_channels(self, cs.controlChannelInfo_t **lst):
+        """Returns a list of allocated channels in *lst. A controlChannelInfo_t
+        structure contains the channel characteristics.
 
-    # cdef int csoundTableLength(self, int table)
-    # cdef MYFLT csoundTableGet(self, int table, int index)
-    # cdef void csoundTableSet(self, int table, int index, MYFLT value)
-    # cdef void csoundTableCopyOut(self, int table, MYFLT* dest)
-    # cdef void csoundTableCopyOutAsync(self, int table, MYFLT* dest)
-    # cdef void csoundTableCopyIn(self, int table, MYFLT* src)
-    # cdef void csoundTableCopyInAsync(self, int table, MYFLT* src)
-    # cdef int csoundGetTable(self, MYFLT** tablePtr, int tableNum)
-    # cdef int csoundGetTableArgs(self, MYFLT** argsPtr, int tableNum)
-    # cdef int csoundIsNamedGEN(self, int num)
-    # cdef void csoundGetNamedGEN(CSOUND* csound, int num, char* name, int len)
+        The return value is the number of channels, which may be zero if there
+        are none, or cs.CSOUND_MEMORY if there is not enough memory for allocating
+        the list. In the case of no channels or an error, *lst is set to NULL.
+        Notes: the caller is responsible for freeing the list returned in *lst
+        with csoundDeleteChannelList(). The name pointers may become invalid
+        after calling csoundReset().
+        """
+        return cs.csoundListChannels(self.ptr, lst)
 
-    # ## ----------------------------------------------------------------------------
-    # ## Function table display
+    cdef delete_channel_list(self, cs.controlChannelInfo_t *lst):
+        """Releases a channel list previously returned by csoundListChannels()."""
+        cs.csoundDeleteChannelList(self.ptr, lst)
 
-    # cdef int csoundSetIsGraphable(self, int isGraphable)
-    # cdef void csoundSetMakeGraphCallback(self, void (*makeGraphCallback_)(CSOUND*, WINDAT* windat, const char* name))
-    # cdef void csoundSetDrawGraphCallback(CSOUND*, void (*drawGraphCallback_)(CSOUND*, WINDAT* windat))
-    # cdef void csoundSetKillGraphCallback(CSOUND*, void (*killGraphCallback_)(CSOUND*, WINDAT* windat))
-    # cdef void csoundSetExitGraphCallback(CSOUND*, int (*exitGraphCallback_)(CSOUND*))
 
-    # ## ----------------------------------------------------------------------------
-    # ## Opcodes
+    cdef int set_control_channel_hints(self, str name, cs.controlChannelHints_t hints):
+        """Set parameters hints for a control channel.
 
-    # cdef void* csoundGetNamedGens(CSOUND*)
-    # cdef int csoundNewOpcodeList(CSOUND*, opcodeListEntry** opcodelist)
-    # cdef void csoundDisposeOpcodeList(CSOUND*, opcodeListEntry* opcodelist)
-    # cdef int csoundAppendOpcode(CSOUND*, const char* opname, int dsblksiz, int flags, int thread, const char* outypes, const char* intypes, int (*iopadr)(CSOUND*, void*), int (*kopadr)(CSOUND*, void*), int (*aopadr)(CSOUND*, void*))
+        These hints have no internal
+        function but can be used by front ends to construct GUIs or to constrain
+        values. See the controlChannelHints_t structure for details.
+        Returns zero on success, or a non-zero error code on failure:
+          cs.CSOUND_ERROR:  the channel does not exist, is not a control channel,
+                         or the specified parameters are invalid
+          cs.CSOUND_MEMORY: could not allocate memory
+        """
+        return cs.csoundSetControlChannelHints(self.ptr, name.encode(), hints)
 
-    # ## ----------------------------------------------------------------------------
-    # ## Threading and concurrency
+    cdef int get_control_channel_hints(self, str name, cs.controlChannelHints_t *hints):
+        """Returns special parameters (assuming there are any) of a control channel,
+        previously set with csoundSetControlChannelHints() or the chnparams
+        opcode.
 
-    # cdef void csoundSetYieldCallback(CSOUND*, int (*yieldCallback_)(CSOUND*))
-    # cdef void* csoundCreateThread(uintptr_t (*threadRoutine)(void*), void* userdata)
-    # cdef void* csoundCreateThread2(uintptr_t (*threadRoutine)(void*), unsigned int stack, void* userdata)
-    # cdef void* csoundGetCurrentThreadId()
-    # cdef uintptr_t csoundJoinThread(void* thread)
-    # cdef void* csoundCreateThreadLock()
-    # cdef int csoundWaitThreadLock(void* lock, size_t milliseconds)
-    # cdef void csoundWaitThreadLockNoTimeout(void* lock)
-    # cdef void csoundNotifyThreadLock(void* lock)
-    # cdef void csoundDestroyThreadLock(void* lock)
-    # cdef void* csoundCreateMutex(int isRecursive)
-    # cdef void csoundLockMutex(void* mutex_)
-    # cdef int csoundLockMutexNoWait(void* mutex_)
-    # cdef void csoundUnlockMutex(void* mutex_)
-    # cdef void csoundDestroyMutex(void* mutex_)
-    # cdef void* csoundCreateBarrier(unsigned int max)
-    # cdef int csoundDestroyBarrier(void* barrier)
-    # cdef int csoundWaitBarrier(void* barrier)
-    # cdef void* csoundCreateCondVar()
-    # cdef void csoundCondWait(void* condVar, void* mutex)
-    # cdef void csoundCondSignal(void* condVar)
-    # cdef void csoundDestroyCondVar(void* condVar)
-    # cdef void csoundSleep(size_t milliseconds)
-    # # cdef int csoundSpinLockInit(spin_lock_t* spinlock)
-    # # cdef void csoundSpinLock(spin_lock_t* spinlock)
-    # # cdef int csoundSpinTryLock(spin_lock_t* spinlock)
-    # # cdef void csoundSpinUnLock(spin_lock_t* spinlock)
+        If the channel exists, is a control channel, the channel hints
+        are stored in the preallocated controlChannelHints_t structure. The
+        attributes member of the structure will be allocated inside this function
+        so it is necessary to free it explicitly in the host.
+         *
+        The return value is zero if the channel exists and is a control
+        channel, otherwise, an error code is returned.
+        """
+        return cs.csoundGetControlChannelHints(self.ptr, name.encode(), hints)
 
-    # ## ----------------------------------------------------------------------------
-    # ## Miscellaneous functions
 
-    # cdef long csoundRunCommand(const char* const* argv, int noWait)
-    # cdef void csoundInitTimerStruct(RTCLOCK*)
-    # cdef double csoundGetRealTime(RTCLOCK*)
-    # cdef double csoundGetCPUTime(RTCLOCK*)
-    # cdef uint32_t csoundGetRandomSeedFromTime()
-    # cdef # void csoundSetLanguage(cslanguage_t lang_code)
-    # cdef const char* csoundGetEnv(CSOUND* csound, const char* name)
-    # cdef int csoundSetGlobalEnv(const char* name, const char* value)
-    # cdef int csoundCreateGlobalVariable(CSOUND*, const char* name, size_t nbytes)
-    # cdef void* csoundQueryGlobalVariable(CSOUND*, const char* name)
-    # cdef void* csoundQueryGlobalVariableNoCheck(CSOUND*, const char* name)
-    # cdef int csoundDestroyGlobalVariable(CSOUND*, const char* name)
-    # cdef int csoundRunUtility(CSOUND*, const char* name, int argc, char** argv)
-    # cdef char** csoundListUtilities(CSOUND*)
-    # cdef void csoundDeleteUtilityList(CSOUND*, char** lst)
-    # cdef const char* csoundGetUtilityDescription(CSOUND*, const char* utilName)
-    # cdef int csoundRand31(int* seedVal)
-    # cdef void csoundSeedRandMT(CsoundRandMTState* p, const uint32_t* initKey, uint32_t keyLength)
-    # cdef uint32_t csoundRandMT(CsoundRandMTState* p)
-    # cdef void* csoundCreateCircularBuffer(CSOUND* csound, int numelem, int elemsize)
-    # cdef int csoundReadCircularBuffer(CSOUND* csound, void* circular_buffer, void* out, int items)
-    # cdef int csoundPeekCircularBuffer(CSOUND* csound, void* circular_buffer, void* out, int items)
-    # cdef int csoundWriteCircularBuffer(CSOUND* csound, void* p, const void* inp, int items)
-    # cdef void csoundFlushCircularBuffer(CSOUND* csound, void* p)
-    # cdef void csoundDestroyCircularBuffer(CSOUND* csound, void* circularbuffer)
-    # cdef int csoundOpenLibrary(void** library, const char* libraryPath)
-    # cdef int csoundCloseLibrary(void* library)
-    # cdef void* csoundGetLibrarySymbol(void* library, const char* symbolName)
+    cdef int* get_channel_lock(self, str name):
+        """Recovers a pointer to a lock for the specified channel called 'name'.
+
+        The returned lock can be locked/unlocked  with the csoundSpinLock()
+        and csoundSpinUnLock() functions.
+        @returns the address of the lock or NULL if the channel does not exist
+        """
+        return cs.csoundGetChannelLock(self.ptr, name.encode())
+
+    cdef cs.MYFLT get_control_channel(self, str name, int* err):
+        """retrieves the value of control channel identified by *name.
+        If the err argument is not NULL, the error (or success) code
+        finding or accessing the channel is stored in it.
+        """
+        return cs.csoundGetControlChannel(self.ptr, name.encode(), err)
+
+    cdef set_control_channel(self, str name, cs.MYFLT val):
+        """sets the value of control channel identified by *name
+        """
+        cs.csoundSetControlChannel(self.ptr, name.encode(), val)
+
+    cdef get_audio_channel(self, str name, cs.MYFLT* samples):
+        """copies the audio channel identified by *name into array
+        *samples which should contain enough memory for ksmps cs.MYFLTs
+        """
+        cs.csoundGetAudioChannel(self.ptr, name.encode(), samples)
+
+    cdef set_audio_channel(self, str name, cs.MYFLT* samples):
+        """sets the audio channel identified by *name with data from array
+        *samples which should contain at least ksmps cs.MYFLTs
+        """
+        cs.csoundSetAudioChannel(self.ptr, name.encode(), samples)
+
+    cdef get_string_channel(self, str name, str string):
+        """copies the string channel identified by *name into *string
+        which should contain enough memory for the string
+        (see csoundGetChannelDatasize() below)
+        """
+        cs.csoundGetStringChannel(self.ptr, name.encode(), string.encode())
+
+    cdef set_string_channel(self, str name, str string):
+        """sets the string channel identified by *name with *string
+        """
+        cs.csoundSetStringChannel(self.ptr, name.encode(), string.encode())
+
+    cdef int get_channel_datasize(self, str name):
+        """returns the size of data stored in a channel; for string channels
+        this might change if the channel space gets reallocated
+        Since string variables use dynamic memory allocation in Csound6,
+        this function can be called to get the space required for
+        csoundGetStringChannel()
+        """
+        return cs.csoundGetChannelDatasize(self.ptr, name.encode())
+
+    # cdef set_input_channel_callback(self, cs.channelCallback_t inputChannelCallback):
+    #     """Sets the function which will be called whenever the invalue opcode
+    #     is used.
+    #     """
+    #     cs.csoundSetInputChannelCallback(self.ptr, inputChannelCallback)
+
+    # cdef set_output_channel_callback(self, cs.channelCallback_t outputChannelCallback):
+    #     """Sets the function which will be called whenever the outvalue opcode
+    #     is used.
+    #     """
+    #     cs.csoundSetOutputChannelCallback(self.ptr, outputChannelCallback)
+
+    cdef int set_pvs_channel(self, const cs.PVSDATEXT *fin, str name):
+        """Sends a PVSDATEX fin to the pvsin opcode (f-rate) for channel 'name'.
+        Returns zero on success, cs.CSOUND_ERROR if the index is invalid or
+        fsig framesizes are incompatible.
+        cs.CSOUND_MEMORY if there is not enough memory to extend the bus.
+        """
+        return cs.csoundSetPvsChannel(self.ptr, fin, name.encode())
+
+    cdef int get_pvs_channel(self, cs.PVSDATEXT *fout, str name):
+        """Receives a PVSDAT fout from the pvsout opcode (f-rate) at channel 'name'
+        Returns zero on success, cs.CSOUND_ERROR if the index is invalid or
+        if fsig framesizes are incompatible.
+        cs.CSOUND_MEMORY if there is not enough memory to extend the bus
+        """
+        return cs.csoundGetPvsChannel(self.ptr, fout, name.encode())
+
+    cdef int score_event(self, char type, const cs.MYFLT *pFields, long numFields):
+        """Send a new score event. 'type' is the score event type ('a', 'i', 'q',
+        'f', or 'e').
+        'numFields' is the size of the pFields array.  'pFields' is an array of
+        floats with all the pfields for this event, starting with the p1 value
+        specified in pFields[0].
+        """
+        return cs.csoundScoreEvent(self.ptr, type, pFields, numFields)
+
+    cdef score_event_async(self, char type, const cs.MYFLT *pFields, long numFields):
+        """Asynchronous version of csoundScoreEvent().
+        """
+        cs.csoundScoreEventAsync(self.ptr, type, pFields, numFields)
+
+    cdef int score_event_absolute(self, char type, const cs.MYFLT *pfields, long numFields, double time_ofs):
+        """Like csoundScoreEvent(), this function inserts a score event, but
+        at absolute time with respect to the start of performance, or from an
+        offset set with time_ofs
+        """
+        return cs.csoundScoreEventAbsolute(self.ptr, type, pfields, numFields, time_ofs)
+
+    cdef score_event_absolute_async(self, char type, const cs.MYFLT *pfields, long numFields, double time_ofs):
+        """Asynchronous version of csoundScoreEventAbsolute().
+        """
+        cs.csoundScoreEventAbsoluteAsync(self.ptr, type, pfields, numFields, time_ofs)
+
+    cdef input_message(self, const char *message):
+        """Input a NULL-terminated string (as if from a console),
+        used for line events.
+        """
+        cs.csoundInputMessage(self.ptr, message)
+
+    cdef input_message_async(self, const char *message):
+        """Asynchronous version of csoundInputMessage().
+        """
+        cs.csoundInputMessageAsync(self.ptr, message)
+
+    cdef int kill_instance(self, cs.MYFLT instr, char *instrName, int mode, int allow_release):
+        """Kills off one or more running instances of an instrument identified
+        by instr (number) or instrName (name). If instrName is NULL, the
+        instrument number is used.
+        Mode is a sum of the following values:
+        0,1,2: kill all instances (1), oldest only (1), or newest (2)
+        4: only turnoff notes with exactly matching (fractional) instr number
+        8: only turnoff notes with indefinite duration (p3 < 0 or MIDI)
+        allow_release, if non-zero, the killed instances are allowed to release.
+        """
+        return cs.csoundKillInstance(self.ptr, instr, instrName, mode, allow_release)
+
+
+    cdef int register_sense_event_callback(self, void (*func)(cs.CSOUND *, void *) noexcept, void *userData):
+        """Register a function to be called once in every control period
+        by sensevents(). Any number of functions may be registered,
+        and will be called in the order of registration.
+        The callback function takes two arguments: the Csound instance
+        pointer, and the userData pointer as passed to this function.
+        This facility can be used to ensure a function is called synchronously
+        before every csound control buffer processing. It is important
+        to make sure no blocking operations are performed in the callback.
+        The callbacks are cleared on csoundCleanup().
+        Returns zero on success.
+        """
+        return cs.csoundRegisterSenseEventCallback(self.ptr, func, userData)
+
+    cdef key_press(self, char c):
+        """Set the ASCII code of the most recent key pressed.
+        This value is used by the 'sensekey' opcode if a callback
+        for returning keyboard events is not set (see
+        csoundRegisterKeyboardCallback()).
+        """
+        cs.csoundKeyPress(self.ptr, c)
+
+    cdef int register_keyboard_callback(self, int (*func)(void *userData, void *p, unsigned int type) noexcept, void *userData, unsigned int type):
+        """Registers general purpose callback functions that will be called to query
+        keyboard events. These callbacks are called on every control period by
+        the sensekey opcode.
+        The callback is preserved on csoundReset(), and multiple
+        callbacks may be set and will be called in reverse order of
+        registration. If the same function is set again, it is only moved
+        in the list of callbacks so that it will be called first, and the
+        user data and type mask parameters are updated. 'typeMask' can be the
+        bitwise OR of callback types for which the function should be called,
+        or zero for all types.
+        Returns zero on success, cs.CSOUND_ERROR if the specified function
+        pointer or type mask is invalid, and cs.CSOUND_MEMORY if there is not
+        enough memory.
+
+        The callback function takes the following arguments:
+          void *userData
+            the "user data" pointer, as specified when setting the callback
+          void *p
+            data pointer, depending on the callback type
+          unsigned int type
+            callback type, can be one of the following (more may be added in
+            future versions of Csound):
+              cs.CSOUND_CALLBACK_KBD_EVENT
+              cs.CSOUND_CALLBACK_KBD_TEXT
+                called by the sensekey opcode to fetch key codes. The data
+                pointer is a pointer to a single value of type 'int', for
+                returning the key code, which can be in the range 1 to 65535,
+                or 0 if there is no keyboard event.
+                For cs.CSOUND_CALLBACK_KBD_EVENT, both key press and release
+                events should be returned (with 65536 (0x10000) added to the
+                key code in the latter case) as unshifted ASCII codes.
+                cs.CSOUND_CALLBACK_KBD_TEXT expects key press events only as the
+                actual text that is typed.
+        The return value should be zero on success, negative on error, and
+        positive if the callback was ignored (for example because the type is
+        not known).
+        """
+        return cs.csoundRegisterKeyboardCallback(self.ptr, func, userData, type)
+
+    cdef remove_keyboard_callback(self, int (*func)(void *, void *, unsigned int) noexcept):
+        """Removes a callback previously set with csoundRegisterKeyboardCallback().
+        """
+        cs.csoundRemoveKeyboardCallback(self.ptr, func)
+    
+    ## ----------------------------------------------------------------------------
+    ## Tables
+
+    cdef int table_length(self, int table):
+        """Returns the length of a function table (not including the guard point),
+        or -1 if the table does not exist.
+        """
+        return cs.csoundTableLength(self.ptr, table)
+
+    cdef cs.MYFLT table_get(self, int table, int index):
+        """Returns the value of a slot in a function table.
+        The table number and index are assumed to be valid.
+        """
+        return cs.csoundTableGet(self.ptr, table, index)
+
+    cdef table_set(self, int table, int index, cs.MYFLT value):
+        """Sets the value of a slot in a function table.
+        The table number and index are assumed to be valid.
+        """
+        cs.csoundTableSet(self.ptr, table, index, value)
+
+    cdef table_copy_out(self, int table, cs.MYFLT *dest):
+        """Copy the contents of a function table into a supplied array *dest
+        The table number is assumed to be valid, and the destination needs to
+        have sufficient space to receive all the function table contents.
+        """
+        cs.csoundTableCopyOut(self.ptr, table, dest)
+
+    cdef table_copy_out_async(self, int table, cs.MYFLT *dest):
+        """Asynchronous version of csoundTableCopyOut()
+        """
+        cs.csoundTableCopyOutAsync(self.ptr, table, dest)
+
+    cdef table_copy_in(self, int table, cs.MYFLT *src):
+        """Copy the contents of an array *src into a given function table
+        The table number is assumed to be valid, and the table needs to
+        have sufficient space to receive all the array contents.
+        """
+        cs.csoundTableCopyIn(self.ptr, table, src)
+
+    cdef table_copy_in_async(self, int table, cs.MYFLT *src):
+        """Asynchronous version of csoundTableCopyIn()
+        """
+        cs.csoundTableCopyInAsync(self.ptr, table, src)
+
+    cdef int get_table(self, cs.MYFLT **tablePtr, int tableNum):
+        """Stores pointer to function table 'tableNum' in *tablePtr,
+        and returns the table length (not including the guard point).
+        If the table does not exist, *tablePtr is set to NULL and
+        -1 is returned.
+        """
+        return cs.csoundGetTable(self.ptr, tablePtr, tableNum)
+
+    cdef int get_table_args(self, cs.MYFLT **argsPtr, int tableNum):
+        """Stores pointer to the arguments used to generate
+        function table 'tableNum' in *argsPtr,
+        and returns the number of arguments used.
+        If the table does not exist, *argsPtr is set to NULL and
+        -1 is returned.
+        NB: the argument list starts with the GEN number and is followed by
+        its parameters. eg. f 1 0 1024 10 1 0.5  yields the list {10.0,1.0,0.5}
+        """
+        return cs.csoundGetTableArgs(self.ptr, argsPtr, tableNum)
+
+    cdef int is_named_gen(self, int num):
+        """Checks if a given GEN number num is a named GEN
+        if so, it returns the string length (excluding terminating NULL char)
+        Otherwise it returns 0.
+        """
+        return cs.csoundIsNamedGEN(self.ptr, num)
+
+    cdef get_named_gen(self, int num, char *name, int len):
+        """Gets the GEN name from a number num, if this is a named GEN
+        The final parameter is the max len of the string (excluding termination)
+        """
+        cs.csoundGetNamedGEN(self.ptr, num, name, len)
+
+
+    ## ----------------------------------------------------------------------------
+    ## Function table display
+
+    cdef int set_is_graphable(self, int isGraphable):
+        """Tells Csound whether external graphic table display is supported.
+        Returns the previously set value (initially zero).
+        """
+        return cs.csoundSetIsGraphable(self.ptr, isGraphable)
+
+    cdef set_make_graph_callback(self, void (*makeGraphCallback_)(cs.CSOUND*, cs.WINDAT* windat, const char* name) noexcept):
+        """Called by external software to set Csound's MakeGraph function.
+        """
+        cs.csoundSetMakeGraphCallback(self.ptr, makeGraphCallback_)
+
+    cdef set_draw_graph_callback(self, void (*drawGraphCallback_)(cs.CSOUND*, cs.WINDAT* windat) noexcept):
+        """Called by external software to set Csound's DrawGraph function.
+        """
+        cs.csoundSetDrawGraphCallback(self.ptr, drawGraphCallback_)
+
+    cdef set_kill_graph_callback(self, void (*killGraphCallback_)(cs.CSOUND*, cs.WINDAT* windat) noexcept):
+        """Called by external software to set Csound's KillGraph function.
+        """
+        cs.csoundSetKillGraphCallback(self.ptr, killGraphCallback_)
+
+    cdef set_exit_graph_callback(self, int (*exitGraphCallback_)(cs.CSOUND*) noexcept):
+        """Called by external software to set Csound's ExitGraph function.
+        """
+        cs.csoundSetExitGraphCallback(self.ptr, exitGraphCallback_)
+
+
+    ## ----------------------------------------------------------------------------
+    ## Opcodes
+
+    cdef void* get_named_gens(self):
+        """Finds the list of named gens"""
+        return cs.csoundGetNamedGens(self.ptr)
+
+    cdef int new_opcode_list(self, cs.opcodeListEntry** opcodelist):
+        """Gets an alphabetically sorted list of all opcodes.
+        Should be called after externals are loaded by csoundCompile().
+        Returns the number of opcodes, or a negative error code on failure.
+        Make sure to call csoundDisposeOpcodeList() when done with the list.
+        """
+        return cs.csoundNewOpcodeList(self.ptr, opcodelist)
+
+    cdef dispose_opcode_list(self, cs.opcodeListEntry* opcodelist):
+        """Releases an opcode list."""
+        cs.csoundDisposeOpcodeList(self.ptr, opcodelist)
+
+    cdef int append_opcode(self, const char *opname,
+                                  int dsblksiz, int flags, int thread,
+                                  const char *outypes, const char *intypes,
+                                  int (*iopadr)(cs.CSOUND *, void *) noexcept,
+                                  int (*kopadr)(cs.CSOUND *, void *) noexcept,
+                                  int (*aopadr)(cs.CSOUND *, void *) noexcept):
+        """
+        Appends an opcode implemented by external software
+        to Csound's internal opcode list.
+
+        The opcode list is extended by one slot,
+        and the parameters are copied into the new slot.
+        Returns zero on success.
+        """
+        return cs.csoundAppendOpcode(self.ptr, opname, dsblksiz, flags, thread, 
+            outypes, intypes, iopadr, kopadr, aopadr)
+
+    ## ----------------------------------------------------------------------------
+    ## Utilities
+    
+    cdef const char *get_env(self, const char *name):
+        """Get pointer to the value of environment variable 'name', searching
+        in this order: local environment of 'csound' (if not NULL), variables
+        set with csoundSetGlobalEnv(), and system environment variables.
+        If 'csound' is not NULL, should be called after csoundCompile().
+        Return value is NULL if the variable is not set.
+        """
+        return cs.csoundGetEnv(self.ptr, name)
+
+    cdef int create_global_variable(self, const char *name, size_t nbytes):
+        """Allocate nbytes bytes of memory that can be accessed later by calling
+        csoundQueryGlobalVariable() with the specified name; the space is
+        cleared to zero.
+        Returns cs.CSOUND_SUCCESS on success, cs.CSOUND_ERROR in case of invalid
+        parameters (zero nbytes, invalid or already used name), or
+        cs.CSOUND_MEMORY if there is not enough memory.
+        """
+        return cs.csoundCreateGlobalVariable(self.ptr, name, nbytes)
+
+    cdef void *query_global_variable(self, const char *name):
+        """
+        Get pointer to space allocated with the name "name".
+        Returns NULL if the specified name is not defined.
+        """
+        return cs.csoundQueryGlobalVariable(self.ptr, name)
+
+    cdef void *query_global_variable_nocheck(self, const char *name):
+        """
+        This function is the same as csoundQueryGlobalVariable(), except the
+        variable is assumed to exist and no error checking is done.
+        Faster, but may crash or return an invalid pointer if 'name' is
+        not defined.
+        """
+        return cs.csoundQueryGlobalVariableNoCheck(self.ptr, name)
+
+    cdef int destroy_global_variable(self, const char *name):
+        """Free memory allocated for "name" and remove "name" from the database.
+        Return value is cs.CSOUND_SUCCESS on success, or cs.CSOUND_ERROR if the name is
+        not defined.
+        """
+        return cs.csoundDestroyGlobalVariable(self.ptr, name)
+    cdef int run_utility(self, const char *name, int argc, char **argv):
+        """Run utility with the specified name and command line arguments.
+        Should be called after loading utility plugins.
+        Use csoundReset() to clean up after calling this function.
+        Returns zero if the utility was run successfully.
+        """
+        return cs.csoundRunUtility(self.ptr, name, argc, argv)
+
+    cdef char **list_utilities(self):
+        """
+        Returns a NULL terminated list of registered utility names.
+        The caller is responsible for freeing the returned array with
+        csoundDeleteUtilityList(), however, the names should not be
+        changed or freed.
+        The return value may be NULL in case of an error.
+        """
+        return cs.csoundListUtilities(self.ptr)
+
+    cdef delete_utility_list(self, char **lst):
+        """Releases an utility list previously returned by csoundListUtilities()."""
+        cs.csoundDeleteUtilityList(self.ptr, lst)
+
+    cdef const char *get_utility_description(self, const char *utilName):
+        """Get utility description.
+        Returns NULL if the utility was not found, or it has no description,
+        or an error occured.
+        """
+        return cs.csoundGetUtilityDescription(self.ptr, utilName)
+
+    cdef void *create_circular_buffer(self, int numelem, int elemsize):
+        """Create circular buffer with numelem number of elements. The
+        element's size is set from elemsize. It should be used like:
+
+            void *rb = csoundCreateCircularBuffer(csound, 1024, sizeof(cs.MYFLT)):
+        """
+        return cs.csoundCreateCircularBuffer(self.ptr, numelem, elemsize)
+
+    cdef int read_circular_buffer(self, void *circular_buffer, void *out, int items):
+        """Read from circular buffer
+        @param csound This value is currently ignored.
+        @param circular_buffer pointer to an existing circular buffer
+        @param out preallocated buffer with at least items number of elements, where
+                     buffer contents will be read into
+        @param items number of samples to be read
+        @returns the actual number of items read (0 <= n <= items)
+        """
+        return cs.csoundReadCircularBuffer(self.ptr, circular_buffer, out, items)
+
+    cdef int peek_circular_buffer(self, void *circular_buffer, void *out, int items):
+        """Read from circular buffer without removing them from the buffer.
+        @param circular_buffer pointer to an existing circular buffer
+        @param out preallocated buffer with at least items number of elements, where
+                     buffer contents will be read into
+        @param items number of samples to be read
+        @returns the actual number of items read (0 <= n <= items)
+        """
+        return cs.csoundPeekCircularBuffer(self.ptr, circular_buffer, out, items)
+
+    cdef int write_circular_buffer(self, void *p, const void *inp, int items):
+        """Write to circular buffer
+        @param csound This value is currently ignored.
+        @param p pointer to an existing circular buffer
+        @param inp buffer with at least items number of elements to be written into
+                     circular buffer
+        @param items number of samples to write
+        @returns the actual number of items written (0 <= n <= items)
+        """
+        return cs.csoundWriteCircularBuffer(self.ptr, p, inp, items)
+
+    cdef flush_circular_buffer(self, void *p):
+        """Empty circular buffer of any remaining data. This function should only be
+        used if there is no reader actively getting data from the buffer.
+        @param csound This value is currently ignored.
+        @param p pointer to an existing circular buffer
+        """
+        cs.csoundFlushCircularBuffer(self.ptr, p)
+
+    cdef destroy_circular_buffer(self, void *circularbuffer):
+        """Free circular buffer
+        """
+        cs.csoundDestroyCircularBuffer(self.ptr, circularbuffer)
+
+
+## ----------------------------------------------------------------------------
+## Threading and concurrency
+
+
+    cdef set_yield_callback(self, int (*yieldCallback_)(cs.CSOUND *) noexcept):
+        """Called by external software to set a function for checking system
+        events, yielding cpu time for coopertative multitasking, etc.
+
+        This function is optional. It is often used as a way to 'turn off'
+        Csound, allowing it to exit gracefully. In addition, some operations
+        like utility analysis routines are not reentrant and you should use
+        this function to do any kind of updating during the operation.
+
+        Returns an 'OK to continue' boolean.
+        """
+        cs.csoundSetYieldCallback(self.ptr, yieldCallback_)
+
+
+cdef void *create_thread(cs.uintptr_t (*threadRoutine)(void *) noexcept, void *userdata):
+    """
+    Creates and starts a new thread of execution.
+    Returns an opaque pointer that represents the thread on success,
+    or NULL for failure.
+    The userdata pointer is passed to the thread routine.
+    """
+    return cs.csoundCreateThread(threadRoutine, userdata)
+
+cdef void *create_thread2(cs.uintptr_t (*threadRoutine)(void *) noexcept, unsigned int stack, void *userdata):
+    """
+    Creates and starts a new thread of execution
+    with a user-defined stack size.
+    Returns an opaque pointer that represents the thread on success,
+    or NULL for failure.
+    The userdata pointer is passed to the thread routine.
+    """
+    return cs.csoundCreateThread2(threadRoutine, stack, userdata)
+
+
+cdef void *get_current_thread_id():
+    """
+    Returns the ID of the currently executing thread,
+    or NULL for failure.
+     *
+    NOTE: The return value can be used as a pointer
+    to a thread object, but it should not be compared
+    as a pointer. The pointed to values should be compared,
+    and the user must free the pointer after use.
+    """
+    return cs.csoundGetCurrentThreadId()
+
+
+cdef cs.uintptr_t join_thread(void *thread):
+    """Waits until the indicated thread's routine has finished.
+    Returns the value returned by the thread routine.
+    """
+    return cs.csoundJoinThread(thread)
+
+cdef void *create_thread_lock():
+    """
+    Creates and returns a monitor object, or NULL if not successful.
+    The object is initially in signaled (notified) state.
+    """
+    return cs.csoundCreateThreadLock()
+
+cdef int wait_thread_lock(void *lock, size_t milliseconds):
+    """Waits on the indicated monitor object for the indicated period.
+    The function returns either when the monitor object is notified,
+    or when the period has elapsed, whichever is sooner; in the first case,
+    zero is returned.
+    If 'milliseconds' is zero and the object is not notified, the function
+    will return immediately with a non-zero status.
+    """
+    return cs.csoundWaitThreadLock(lock, milliseconds)
+
+cdef wait_thread_lock_no_timeout(void *lock):
+    """Waits on the indicated monitor object until it is notified.
+    This function is similar to csoundWaitThreadLock() with an infinite
+    wait time, but may be more efficient.
+    """
+    cs.csoundWaitThreadLockNoTimeout(lock)
+
+cdef notify_thread_lock(void *lock):
+    """Notifies the indicated monitor object.
+    """
+    cs.csoundNotifyThreadLock(lock)
+
+cdef destroy_thread_lock(void *lock):
+    """Destroys the indicated monitor object.
+    """
+    cs.csoundDestroyThreadLock(lock)
+
+# ERROR:  cdef void *csoundCreateMutex(int isRecursive):
+
+
+cdef void *create_mutex(int isRecursive):
+    """
+    Creates and returns a mutex object, or NULL if not successful.
+    Mutexes can be faster than the more general purpose monitor objects
+    returned by csoundCreateThreadLock() on some platforms, and can also
+    be recursive, but the result of unlocking a mutex that is owned by
+    another thread or is not locked is undefined.
+    If 'isRecursive' is non-zero, the mutex can be re-locked multiple
+    times by the same thread, requiring an equal number of unlock calls;
+    otherwise, attempting to re-lock the mutex results in undefined
+    behavior.
+    Note: the handles returned by csoundCreateThreadLock() and
+    csoundCreateMutex() are not compatible.
+    """
+    return cs.csoundCreateMutex(isRecursive)
+
+cdef lock_mutex(void *mutex_):
+    """Acquires the indicated mutex object; if it is already in use by
+    another thread, the function waits until the mutex is released by
+    the other thread.
+    """
+    cs.csoundLockMutex(mutex_)
+
+cdef int lock_mutex_no_wait(void *mutex_):
+    """Acquires the indicated mutex object and returns zero, unless it is
+    already in use by another thread, in which case a non-zero value is
+    returned immediately, rather than waiting until the mutex becomes
+    available.
+    Note: this function may be unimplemented on Windows.
+    """
+    return cs.csoundLockMutexNoWait(mutex_)
+
+cdef unlock_mutex(void *mutex_):
+    """Releases the indicated mutex object, which should be owned by
+    the current thread, otherwise the operation of this function is
+    undefined. A recursive mutex needs to be unlocked as many times
+    as it was locked previously.
+    """
+    cs.csoundUnlockMutex(mutex_)
+
+cdef destroy_mutex(void *mutex_):
+    """Destroys the indicated mutex object. Destroying a mutex that
+    is currently owned by a thread results in undefined behavior.
+    """
+    cs.csoundDestroyMutex(mutex_)
+
+cdef void *csoundCreateBarrier(unsigned int max):
+    """
+    Create a Thread Barrier. Max value parameter should be equal to
+    number of child threads using the barrier plus one for the
+    master thread"""
+    return cs.csoundCreateBarrier(max)
+
+
+cdef int destroy_barrier(void *barrier):
+    """Destroy a Thread Barrier.
+    """
+    return cs.csoundDestroyBarrier(barrier)
+
+cdef int wait_barrier(void *barrier):
+    """Wait on the thread barrier.
+    """
+    return cs.csoundWaitBarrier(barrier)
+
+cdef void* create_cond_var():
+    """ Creates a conditional variable"""
+    return cs.csoundCreateCondVar()
+
+cdef cond_wait(void* condVar, void* mutex):
+    """Waits up on a conditional variable and mutex
+    """
+    cs.csoundCondWait(condVar, mutex)
+
+cdef cond_signal(void* condVar):
+    """Signals a conditional variable
+    """
+    cs.csoundCondSignal(condVar)
+
+cdef destroy_cond_var(void* condVar):
+    """Destroys a conditional variable
+    """
+    cs.csoundDestroyCondVar(condVar)
+
+cdef csoundSleep(size_t milliseconds):
+    """Waits for at least the specified number of milliseconds,
+    yielding the CPU to other threads.
+    """
+    cs.csoundSleep(milliseconds)
+
+# cdef int spin_lock_init(cs.spin_lock_t *spinlock):
+#     """If the spinlock is not locked, lock it and return;
+#     if is is locked, wait until it is unlocked, then lock it and return.
+#     Uses atomic compare and swap operations that are safe across processors
+#     and safe for out of order operations,
+#     and which are more efficient than operating system locks.
+#     Use spinlocks to protect access to shared data, especially in functions
+#     that do little more than read or write such data, for example:
+#      *
+#     @code
+#     static spin_lock_t lock = SPINLOCK_INIT;
+#     csoundSpinLockInit(&lock):
+#     void write(size_t frames, int* signal)
+#     {
+#       csoundSpinLock(&lock):
+#       for (size_t frame = 0; i < frames; frame++) {
+#         global_buffer[frame] += signal[frame];
+#       }
+#       csoundSpinUnlock(&lock):
+#     }
+#     @endcode
+#     """
+#     return cs.csoundSpinLockInit(spinlock)
+
+# cdef spin_lock(cs.spin_lock_t *spinlock):
+#     """Locks the spinlock
+#     """
+#     cs.csoundSpinLock( )
+
+# cdef int spin_try_lock(cs.spin_lock_t *spinlock):
+#     """Tries the lock, returns cs.CSOUND_SUCCESS if lock could be acquired,
+#         cs.CSOUND_ERROR, otherwise.
+#     """
+#     return cs.csoundSpinTryLock(spinlock)
+
+# cdef  spin_un_lock(cs.spin_lock_t *spinlock):
+#     """Unlocks the spinlock
+#     """
+#     cs.csoundSpinUnLock(spinlock)
+
+
+## ----------------------------------------------------------------------------
+## Miscellaneous functions
+
+cdef long run_command(const char * const *argv, int noWait):
+    """Runs an external command with the arguments specified in 'argv'.
+    argv[0] is the name of the program to execute (if not a full path
+    file name, it is searched in the directories defined by the PATH
+    environment variable). The list of arguments should be terminated
+    by a NULL pointer.
+    If 'noWait' is zero, the function waits until the external program
+    finishes, otherwise it returns immediately. In the first case, a
+    non-negative return value is the exit status of the command (0 to
+    255), otherwise it is the PID of the newly created process.
+    On error, a negative value is returned.
+    """
+    return cs.csoundRunCommand(argv, noWait)
+
+cdef init_timer_struct(cs.RTCLOCK *clock):
+    """Initialise a timer structure.
+    """
+    cs.csoundInitTimerStruct(clock)
+
+cdef double get_real_time(cs.RTCLOCK *clock):
+    """Return the elapsed real time (in seconds) since the specified timer
+    structure was initialised.
+    """
+    return cs.csoundGetRealTime(clock)
+
+cdef double get_cpu_time(cs.RTCLOCK *clock):
+    """Return the elapsed CPU time (in seconds) since the specified timer
+    structure was initialised.
+    """
+    return cs.csoundGetCPUTime(clock)
+
+cdef cs.uint32_t get_random_seed_from_time():
+    """Return a 32-bit unsigned integer to be used as seed from current time.
+    """
+    return cs.csoundGetRandomSeedFromTime()
+
+# cdef set_language(cs.cslanguage_t lang_code):
+#     """Set language to 'lang_code' (lang_code can be for example
+#     CSLANGUAGE_ENGLISH_UK or CSLANGUAGE_FRENCH or many others,
+#     see n_getstr.h for the list of languages). This affects all
+#     Csound instances running in the address space of the current
+#     process. The special language code CSLANGUAGE_DEFAULT can be
+#     used to disable translation of messages and free all memory
+#     allocated by a previous call to csoundSetLanguage().
+#     csoundSetLanguage() loads all files for the selected language
+#     from the directory specified by the CSSTRNGS environment
+#     variable.
+#     """
+#     cs.csoundSetLanguage(lang_code)
+
+
+
+cdef int set_global_env(const char *name, const char *value):
+    """Set the global value of environment variable 'name' to 'value',
+    or delete variable if 'value' is NULL.
+    It is not safe to call this function while any Csound instances
+    are active.
+    Returns zero on success.
+    """
+    return cs.csoundSetGlobalEnv(name, value)
+
+
+cdef int rand31(int *seedVal):
+    """Simple linear congruential random number generator:
+      (*seedVal) = (*seedVal)742938285 % 2147483647
+    the initial value of *seedVal must be in the range 1 to 2147483646.
+    Returns the next number from the pseudo-random sequence,
+    in the range 1 to 2147483646.
+    """
+    return cs.csoundRand31(seedVal)
+
+cdef seed_rand_mt(cs.CsoundRandMTState *p, const cs.uint32_t *initKey, cs.uint32_t keyLength):
+    """Initialise Mersenne Twister (MT19937) random number generator,
+    using 'keyLength' unsigned 32 bit values from 'initKey' as seed.
+    If the array is NULL, the length parameter is used for seeding.
+    """
+    cs.csoundSeedRandMT(p, initKey, keyLength)
+
+cdef cs.uint32_t rand_mt(cs.CsoundRandMTState *p):
+    """Returns next random number from MT19937 generator.
+    The PRNG must be initialised first by calling csoundSeedRandMT().
+    """
+    return cs.csoundRandMT(p)
+
+cdef int open_library(void **library, const char *libraryPath):
+    """Platform-independent function to load a shared library.
+    """
+    return cs.csoundOpenLibrary(library, libraryPath)
+
+cdef int close_library(void *library):
+    """Platform-independent function to unload a shared library.
+    """
+    return cs.csoundCloseLibrary(library)
+
+cdef void *get_library_symbol(void *library, const char *symbolName):
+    """Platform-independent function to get a symbol address in a shared library.
+    """
+    return cs.csoundGetLibrarySymbol(library, symbolName)
 
 
