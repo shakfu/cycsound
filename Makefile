@@ -1,5 +1,5 @@
 
-.PHONY: all build csnd test clean
+.PHONY: all build csnd test repl clean
 
 all: csnd
 
@@ -8,7 +8,10 @@ csnd:
 	@rm -rf ./build ./csnd.c
 
 test:
-	@python3 tests/test_csnd.py
+	@python3 test_csnd.py
+
+repl:
+	@ipython -i scripts/load_csnd.py
 
 clean:
 	@rm -rf build

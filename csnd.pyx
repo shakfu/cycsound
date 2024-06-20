@@ -136,14 +136,14 @@ cdef class Csound:
         obj.ptr_owner = owner
         return obj
 
-    def load_plugins(self, directory):
+    def load_plugins(self, str directory):
         """Loads all plugins from a given directory."""
         return cs.csoundLoadPlugins(self.ptr, directory.encode())
 
     ## ----------------------------------------------------------------------------
     ## Performance
 
-    def parse_orc(self, orc: str) -> Tree:
+    def parse_orc(self, str orc) -> Tree:
         """Parse the given orchestra from an ASCII string into a TREE.
 
         This can be called during performance to parse new code.
@@ -151,18 +151,18 @@ cdef class Csound:
         cdef cs.TREE *tree = cs.csoundParseOrc(self.ptr, orc.encode())
         return Tree.from_ptr(tree)
 
-    def compile_tree(self, root: Tree) -> int:
+    def compile_tree(self, Tree root) -> int:
         """Compile the given TREE node into structs for Csound to use.
 
         This can be called during performance to compile a new TREE.
         """
         return cs.csoundCompileTree(self.ptr, root.ptr)
 
-    def compile_tree_async(self, root: Tree) -> int:
+    def compile_tree_async(self, Tree root) -> int:
         """Asynchronous version of csoundCompileTree()"""
         return cs.csoundCompileTreeAsync(self.ptr, root.ptr)
 
-    def delete_tree(self, tree: Tree):
+    def delete_tree(self, Tree tree):
         """Free the resources associated with the TREE *tree
         
         This function should be called whenever the TREE was
@@ -170,7 +170,7 @@ cdef class Csound:
         """
         cs.csoundDeleteTree(self.ptr, tree.ptr)
 
-    def compile_orc(self, orc: str) -> int:
+    def compile_orc(self, str orc) -> int:
         """Parse, and compile the given orchestra from an ASCII string,
         also evaluating any global space code (i-time only)
         this can be called during performance to compile a new orchestra.
@@ -179,7 +179,7 @@ cdef class Csound:
         """
         return cs.csoundCompileOrc(self.ptr, orc.encode())
 
-    def compile_orc_async(self, orc: str) -> int:
+    def compile_orc_async(self, str orc) -> int:
         """Async version of csoundCompileOrc().
 
         The code is parsed and compiled, then placed on a queue for
@@ -188,7 +188,7 @@ cdef class Csound:
         """
         return cs.csoundCompileOrcAsync(self.ptr, orc.encode())
 
-    def eval_code(self, code: str) -> float:
+    def eval_code(self, str code) -> float:
         """Parse and compile an orchestra given on an string,
           evaluating any global space code (i-time only).
           
@@ -256,7 +256,7 @@ cdef class Csound:
         cdef ParamArray params = ParamArray(args)
         return cs.csoundCompile(self.ptr, params.argc, params.argv)
 
-    def compile_csd(self, csd_filename: str) -> int:
+    def compile_csd(self, str csd_filename) -> int:
         """Compiles a Csound input file (CSD, .csd file), but does not perform it.
         Returns a non-zero error code on failure.
 
@@ -301,7 +301,7 @@ cdef class Csound:
         return cs.csoundCompileCsd(self.ptr, csd_filename.encode())
 
 
-    def compile_csd_text(self, csd_text: str) -> int:
+    def compile_csd_text(self, str csd_text) -> int:
         """Behaves the same way as csoundCompileCsd, except that the content
         of the CSD is read from the csd_text string rather than from a file.
 
@@ -380,30 +380,31 @@ cdef class Csound:
     ## UDP server
 
 
-    cdef int udp_server_start(self, unsigned int port):
+    def udp_server_start(self, int port) -> int:
         """Starts the UDP server on a supplied port number.
 
         Returns cs.CSOUND_SUCCESS if server has been started successfully,
         otherwise, cs.CSOUND_ERROR.
         """
+        assert port > 0, "port number must be above 0"
         return cs.csoundUDPServerStart(self.ptr, port)
 
 
-    cdef int udp_server_status(self):
+    def udp_server_status(self) -> int:
         """Returns the port number on which the server is running, or
-         cs.CSOUND_ERROR if the server is not running.
+        cs.CSOUND_ERROR if the server is not running.
         """
         return cs.csoundUDPServerStatus(self.ptr)
 
 
-    cdef int udp_server_close(self):
+    def udp_server_close(self) -> int:
         """Closes the UDP server, returning cs.CSOUND_SUCCESS if the
         running server was successfully closed, cs.CSOUND_ERROR otherwise.
         """
         return cs.csoundUDPServerClose(self.ptr)
 
 
-    cdef int upd_console(self, const char *addr, int port, int mirror):
+    def upd_console(self, str addr, int port, int mirror) -> int:
         """Turns on the transmission of console messages to UDP on address addr
         port port.
 
@@ -414,37 +415,36 @@ cdef class Csound:
         Returns cs.CSOUND_SUCCESS or cs.CSOUND_ERROR if the UDP transmission
         could not be set up.
         """
-        return cs.csoundUDPConsole(self.ptr, addr, port, mirror)
+        return cs.csoundUDPConsole(self.ptr, addr.encode(), port, mirror)
                                 
 
-    cdef stop_udp_console(self):
+    def stop_udp_console(self):
         """Stop transmitting console messages via UDP."""
         cs.csoundStopUDPConsole(self.ptr)
 
     ## ----------------------------------------------------------------------------
     ## Attributes
 
-
-    cdef cs.MYFLT get_sr(self):
+    def get_sr(self) -> float:
         """Returns the number of audio sample frames per second."""
         return cs.csoundGetSr(self.ptr)
 
-    cdef cs.MYFLT get_kr(self):
+    def get_kr(self) -> float:
         """Returns the number of control samples per second."""
         return cs.csoundGetKr(self.ptr)
 
-    cdef cs.uint32_t get_ksmps(self):
+    def get_ksmps(self) -> int:
         """Returns the number of audio sample frames per control sample."""
         return cs.csoundGetKsmps(self.ptr)
 
-    cdef cs.uint32_t get_nchnls(self):
+    def get_nchnls(self) -> int:
         """Returns the number of audio output channels.
 
         Set through the nchnls header variable in the csd file.
         """
         return cs.csoundGetNchnls(self.ptr)
 
-    cdef cs.uint32_t get_nchnls_input(self):
+    def get_nchnls_input(self) -> int:
         """Returns the number of audio input channels.
 
         Set through the nchnls_i header variable in the csd file. If this variable is
@@ -452,15 +452,15 @@ cdef class Csound:
         """
         return cs.csoundGetNchnlsInput(self.ptr)
 
-    cdef cs.MYFLT get_0dBFS(self):
+    def get_0dBFS(self) -> float:
         """Returns the 0dBFS level of the spin/spout buffers."""
         return cs.csoundGet0dBFS(self.ptr)
 
-    cdef cs.MYFLT get_A4(self):
+    def get_A4(self) -> float:
         """Returns the A4 frequency reference."""
         return cs.csoundGetA4(self.ptr)
 
-    cdef cs.int64_t get_current_time_samples(self):
+    def get_current_time_samples(self) -> int:
         """Return the current performance time in samples."""
         return cs.csoundGetCurrentTimeSamples(self.ptr)
 
@@ -472,11 +472,11 @@ cdef class Csound:
         """Sets host data."""
         cs.csoundSetHostData(self.ptr, hostData)
 
-    cdef int set_option(self, const char *option):
+    def set_option(self, str option) -> int:
         """Set a single csound option (flag). Returns cs.CSOUND_SUCCESS on success.
         NB: blank spaces are not allowed
         """
-        return cs.csoundSetOption(self.ptr, option)
+        return cs.csoundSetOption(self.ptr, option.encode())
 
     cdef set_params(self, cs.CSOUND_PARAMS *p):
         """Configure Csound with a given set of parameters defined in
@@ -496,19 +496,19 @@ cdef class Csound:
         """
         cs.csoundSetParams(self.ptr, p)
 
-    cdef int get_debug(self):
+    def get_debug(self):
         """Returns whether Csound is set to print debug messages sent through the
         DebugMsg() internal API function. Anything different to 0 means true.
         """
         return cs.csoundGetDebug(self.ptr)
 
-    cdef set_debug(self, int debug):
+    def set_debug(self, int debug):
         """Sets whether Csound prints debug messages from the DebugMsg() internal
         API function. Anything different to 0 means true.
         """
         cs.csoundSetDebug(self.ptr, debug)
 
-    cdef cs.MYFLT system_sr(self, cs.MYFLT val):
+    def system_sr(self, float val) -> float:
         """If val > 0, sets the internal variable holding the system HW sr.
         Returns the stored value containing the system HW sr.
         """
@@ -522,17 +522,19 @@ cdef class Csound:
     # apply to both input and output of audio and MIDI. See command line flags
     # -o, -i, -M and -Q in the Csound Reference Manual.
 
-    cdef const char *get_output_name(self):
+    def get_output_name(self) -> str:
         """Returns the audio output name (-o)."""
-        return cs.csoundGetOutputName(self.ptr)
+        cdef const char * name = cs.csoundGetOutputName(self.ptr)
+        return name.decode()
 
 
-    cdef const char *get_input_name(self):
+    def get_input_name(self) -> str:
         """Returns the audio input name (-i)."""
-        return cs.csoundGetInputName(self.ptr)
+        cdef const char * name = cs.csoundGetInputName(self.ptr)
+        return name.decode()
 
 
-    cdef set_output(self, const char *name, const char *type, const char *format):
+    def set_output(self, str name, str type, str format):
         """Set output destination, type and format.
 
         type can be one of  "wav","aiff", "au","raw", "paf", "svx", "nist", "voc",
@@ -544,7 +546,7 @@ cdef class Csound:
         "short", "ulaw", "24bit", "vorbis", or NULL (use default or realtime IO).
         For RT audio, use device_id from CS_AUDIODEVICE for a given audio device.
         """
-        cs.csoundSetOutput(self.ptr, name, type, format)
+        cs.csoundSetOutput(self.ptr, name.encode(), type.encode(), format.encode())
 
     cdef get_output_format(self, char *type, char *format):
         """Get output type and format.
@@ -557,26 +559,25 @@ cdef class Csound:
         """
         cs.csoundGetOutputFormat(self.ptr, type, format)
 
-    cdef set_input(self, const char *name):
+    cdef set_input(self, str name):
         """Set input source."""
-        cs.csoundSetInput(self.ptr, name)
+        cs.csoundSetInput(self.ptr, name.encode())
 
-    cdef set_midi_input(self, const char *name):
+    cdef set_midi_input(self, str name):
         """Set MIDI input device name/number"""
-        cs.csoundSetMIDIInput(self.ptr, name)
+        cs.csoundSetMIDIInput(self.ptr, name.encode())
 
-    cdef set_midi_file_input(self, const char *name):
+    cdef set_midi_file_input(self, str name):
         """Set MIDI file input name"""
-        cs.csoundSetMIDIFileInput(self.ptr, name)
+        cs.csoundSetMIDIFileInput(self.ptr, name.encode())
 
-    cdef set_midi_output(self, const char *name):
+    cdef set_midi_output(self, str name):
         """Set MIDI output device name/numbe"""
-        cs.csoundSetMIDIOutput(self.ptr, name)
+        cs.csoundSetMIDIOutput(self.ptr, name.encode())
 
-    cdef set_midi_file_output(self, const char *name):
+    cdef set_midi_file_output(self, str name):
         """Set MIDI file output name"""
-        cs.csoundSetMIDIFileOutput(self.ptr, name)
-
+        cs.csoundSetMIDIFileOutput(self.ptr, name.encode())
 
     cdef set_file_open_callback(self, void (*func)(cs.CSOUND*, const char*, int, int, int) noexcept):
         """Sets an external callback for receiving notices whenever Csound opens
@@ -595,9 +596,9 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Realtime Audio I/O
 
-    cdef set_rtaudio_Module(self, const char *module):
+    cdef set_rtaudio_Module(self, str module):
         """Sets the current RT audio module"""
-        cs.csoundSetRTAudioModule(self.ptr, module)
+        cs.csoundSetRTAudioModule(self.ptr, module.encode())
 
     cdef int get_module(self, int number, char **name, char **type):
         """retrieves a module name and type ("audio" or "midi") given a
@@ -614,11 +615,11 @@ cdef class Csound:
         return cs.csoundGetModule(self.ptr, number, name, type)
 
 
-    cdef long get_input_buffersize(self):
+    def get_input_buffersize(self) -> int:
         """Returns the number of samples in Csound's input buffer."""
         return cs.csoundGetInputBufferSize(self.ptr)
 
-    cdef long get_output_buffersize(self):
+    def get_output_buffersize(self) -> int:
         """Returns the number of samples in Csound's output buffer."""
         return cs.csoundGetOutputBufferSize(self.ptr)
 
@@ -646,12 +647,12 @@ cdef class Csound:
         """
         return cs.csoundGetSpin(self.ptr)
 
-    cdef clear_spin(self):
+    def clear_spin(self):
         """Clears the input buffer (spin)."""
         cs.csoundClearSpin(self.ptr)
 
 
-    cdef add_spin_sample(self, int frame, int channel, cs.MYFLT sample):
+    def add_spin_sample(self, int frame, int channel, float sample):
         """Adds the indicated sample into the audio input working buffer (spin):
         this only ever makes sense before calling csoundPerformKsmps().
         The frame and channel must be in bounds relative to ksmps and nchnls.
@@ -660,7 +661,7 @@ cdef class Csound:
         """
         cs.csoundAddSpinSample(self.ptr, frame, channel, sample)
 
-    cdef set_spin_sample(self, int frame, int channel, cs.MYFLT sample):
+    def set_spin_sample(self, int frame, int channel, float sample):
         """Sets the audio input working buffer (spin) to the indicated sample
         this only ever makes sense before calling csoundPerformKsmps().
         The frame and channel must be in bounds relative to ksmps and nchnls.
@@ -677,7 +678,7 @@ cdef class Csound:
 
 
 
-    cdef cs.MYFLT get_spout_sample(self, int frame, int channel):
+    def get_spout_sample(self, int frame, int channel) -> float:
         """Returns the indicated sample from the Csound audio output
         working buffer (spout): only ever makes sense after calling
         csoundPerformKsmps().  The frame and channel must be in bounds
@@ -698,7 +699,7 @@ cdef class Csound:
         return cs.csoundGetRtPlayUserData(self.ptr)
 
 
-    cdef set_host_implemented_audio_io(self, int state, int bufSize):
+    def set_host_implemented_audio_io(self, int state, int bufSize):
         """Calling this function with a non-zero 'state' value between
         csoundCreate() and the start of performance will disable all default
         handling of sound I/O by the Csound library, allowing the host
@@ -768,11 +769,11 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Realtime MIDI I/O
 
-    cdef set_midi_module(self, const char *module):
+    def set_midi_module(self, str module):
         """Sets the current MIDI IO module"""
-        cs.csoundSetMIDIModule(self.ptr, module)
+        cs.csoundSetMIDIModule(self.ptr, module.encode())
 
-    cdef set_host_implemented_midi_io(self, int state):
+    def set_host_implemented_midi_io(self, int state):
         """call this function with state 1 if the host is implementing
         MIDI via the callbacks below.
         """
@@ -833,30 +834,30 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Score Handling
 
-    cdef int read_score(self, str score):
+    def read_score(self, str score):
         """Read, preprocess, and load a score from an ASCII string
         It can be called repeatedly, with the new score events
         being added to the currently scheduled ones.
         """
         return cs.csoundReadScore(self.ptr, score.encode())
 
-    cdef read_score_async(self, str score):
+    def read_score_async(self, str score):
         """Asynchronous version of csoundReadScore()."""
         return cs.csoundReadScoreAsync(self.ptr, score.encode())
 
-    cdef double get_score_time(self):
+    def get_score_time(self) -> float:
         """Returns the current score time in seconds
         since the beginning of performance.
         """
         return cs.csoundGetScoreTime(self.ptr)
 
-    cdef int is_score_pending(self):
+    def is_score_pending(self) -> int:
         """Sets whether Csound score events are performed or not, independently
         of real-time MIDI events (see csoundSetScorePending()).
         """
         return cs.csoundIsScorePending(self.ptr)
 
-    cdef set_score_pending(self, int pending):
+    def set_score_pending(self, int pending):
         """Sets whether Csound score events are performed or not (real-time
         events will continue to be performed). Can be used by external software,
         such as a VST host, to turn off performance of score events (while
@@ -866,14 +867,14 @@ cdef class Csound:
         """
         return cs.csoundSetScorePending(self.ptr, pending)
 
-    cdef cs.MYFLT get_score_offset_seconds(self):
+    def get_score_offset_seconds(self) -> float:
         """Returns the score time beginning at which score events will
         actually immediately be performed (see csoundSetScoreOffsetSeconds()).
         """
         return cs.csoundGetScoreOffsetSeconds(self.ptr)
 
 
-    cdef set_score_offset_seconds(self, cs.MYFLT time):
+    def set_score_offset_seconds(self, float time):
         """Csound score events prior to the specified time are not performed, and
         performance begins immediately at the specified time (real-time events
         will continue to be performed as they are received).
@@ -950,11 +951,11 @@ cdef class Csound:
         cs.csoundSetMessageStringCallback(self.ptr, csoundMessageStrCallback)
 
 
-    cdef int get_message_level(self):
+    def get_message_level(self) -> int:
         """Returns the Csound message level (from 0 to 231)."""
         return cs.csoundGetMessageLevel(self.ptr)
 
-    cdef set_message_level(self, int messageLevel):
+    def set_message_level(self, int messageLevel):
         """Sets the Csound message level (from 0 to 231)."""
         cs.csoundSetMessageLevel(self.ptr, messageLevel)
 
@@ -965,6 +966,7 @@ cdef class Csound:
         deleting the Csound instance. You will generally want to call
         csoundCleanup() to make sure the last messages are flushed to
         the message buffer before destroying Csound.
+        
         If 'toStdOut' is non-zero, the messages are also printed to
         stdout and stderr (depending on the type of the message),
         in addition to being stored in the buffer.
