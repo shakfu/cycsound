@@ -4,6 +4,7 @@ __pycache__
 .pytest_cache
 csnd.c
 build/
+tests/tes.aif
 
 # Prerequisites
 *.d

@@ -27,3 +27,10 @@ To build on Windows:
 ```sh
 python setup.py build
 ```
+
+## Test
+
+Requires `pytest`
+
+just `pytest` or `make test`
+

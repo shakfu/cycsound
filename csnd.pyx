@@ -1108,7 +1108,7 @@ cdef class Csound:
         """
         return cs.csoundGetControlChannel(self.ptr, name.encode(), err)
 
-    cdef set_control_channel(self, str name, cs.MYFLT val):
+    def set_control_channel(self, str name, float val):
         """sets the value of control channel identified by *name
         """
         cs.csoundSetControlChannel(self.ptr, name.encode(), val)

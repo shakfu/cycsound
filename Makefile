@@ -16,3 +16,6 @@ repl:
 clean:
 	@rm -rf build __pycache__
 	@rm -f *.so
+
+test:
+	@pytest
