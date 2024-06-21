@@ -379,7 +379,6 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## UDP server
 
-
     def udp_server_start(self, int port) -> int:
         """Starts the UDP server on a supplied port number.
 
@@ -389,20 +388,17 @@ cdef class Csound:
         assert port > 0, "port number must be above 0"
         return cs.csoundUDPServerStart(self.ptr, port)
 
-
     def udp_server_status(self) -> int:
         """Returns the port number on which the server is running, or
         cs.CSOUND_ERROR if the server is not running.
         """
         return cs.csoundUDPServerStatus(self.ptr)
 
-
     def udp_server_close(self) -> int:
         """Closes the UDP server, returning cs.CSOUND_SUCCESS if the
         running server was successfully closed, cs.CSOUND_ERROR otherwise.
         """
         return cs.csoundUDPServerClose(self.ptr)
-
 
     def upd_console(self, str addr, int port, int mirror) -> int:
         """Turns on the transmission of console messages to UDP on address addr
@@ -416,7 +412,6 @@ cdef class Csound:
         could not be set up.
         """
         return cs.csoundUDPConsole(self.ptr, addr.encode(), port, mirror)
-                                
 
     def stop_udp_console(self):
         """Stop transmitting console messages via UDP."""
@@ -873,7 +868,6 @@ cdef class Csound:
         """
         return cs.csoundGetScoreOffsetSeconds(self.ptr)
 
-
     def set_score_offset_seconds(self, float time):
         """Csound score events prior to the specified time are not performed, and
         performance begins immediately at the specified time (real-time events
@@ -901,7 +895,6 @@ cdef class Csound:
         """
         cs.csoundSetCscoreCallback(self.ptr, cscoreCallback_)
 
-
     cdef int score_sort(self, stdio.FILE *inFile, stdio.FILE *outFile):
         """Sorts score file 'inFile' and writes the result to 'outFile'.
         The Csound instance should be initialised
@@ -909,7 +902,6 @@ cdef class Csound:
         after sorting the score to clean up. On success, zero is returned.
         """
         return cs.csoundScoreSort(self.ptr, inFile, outFile)
-
 
     cdef int score_extract(self, stdio.FILE *inFile, stdio.FILE *outFile, stdio.FILE *extractFile):
         """Extracts from 'inFile', controlled by 'extractFile', and writes
@@ -976,25 +968,26 @@ cdef class Csound:
         """
         cs.csoundCreateMessageBuffer(self.ptr, toStdOut)
 
-    cdef const char* get_first_message(self):
+    def get_first_message(self) -> str:
         """Returns the first message from the buffer."""
-        return cs.csoundGetFirstMessage(self.ptr)
+        cdef const char* msg = cs.csoundGetFirstMessage(self.ptr)
+        return msg.decode()
 
-    cdef int get_first_message_attr(self):
+    def get_first_message_attr(self) -> int:
         """Returns the attribute parameter (see msg_attr.h) of the first message
         in the buffer.
         """
         return cs.csoundGetFirstMessageAttr(self.ptr)
 
-    cdef pop_first_message(self):
+    def pop_first_message(self):
         """Removes the first message from the buffer."""
         cs.csoundPopFirstMessage(self.ptr)
 
-    cdef int get_message_cnt(self):
+    def get_message_cnt(self) -> int:
         """Returns the number of pending messages in the buffer."""
         return cs.csoundGetMessageCnt(self.ptr)
 
-    cdef destroy_message_buffer(self):
+    def destroy_message_buffer(self):
         """Releases all memory used by the message buffer."""
         cs.csoundDestroyMessageBuffer(self.ptr)
 
@@ -1144,7 +1137,7 @@ cdef class Csound:
         """
         cs.csoundSetStringChannel(self.ptr, name.encode(), string.encode())
 
-    cdef int get_channel_datasize(self, str name):
+    def get_channel_datasize(self, str name) -> int:
         """returns the size of data stored in a channel; for string channels
         this might change if the channel space gets reallocated
         Since string variables use dynamic memory allocation in Csound6,
@@ -1207,11 +1200,9 @@ cdef class Csound:
         """
         cs.csoundScoreEventAbsoluteAsync(self.ptr, type, pfields, numFields, time_ofs)
 
-    cdef input_message(self, const char *message):
-        """Input a NULL-terminated string (as if from a console),
-        used for line events.
-        """
-        cs.csoundInputMessage(self.ptr, message)
+    cdef input_message(self, str message):
+        """Input a NULL-terminated string (as if from a console), used for line events."""
+        cs.csoundInputMessage(self.ptr, message.encode())
 
     cdef input_message_async(self, const char *message):
         """Asynchronous version of csoundInputMessage().
@@ -1301,19 +1292,19 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Tables
 
-    cdef int table_length(self, int table):
+    def table_length(self, int table) -> int:
         """Returns the length of a function table (not including the guard point),
         or -1 if the table does not exist.
         """
         return cs.csoundTableLength(self.ptr, table)
 
-    cdef cs.MYFLT table_get(self, int table, int index):
+    def table_get(self, int table, int index) -> float:
         """Returns the value of a slot in a function table.
         The table number and index are assumed to be valid.
         """
         return cs.csoundTableGet(self.ptr, table, index)
 
-    cdef table_set(self, int table, int index, cs.MYFLT value):
+    def table_set(self, int table, int index, cs.MYFLT value):
         """Sets the value of a slot in a function table.
         The table number and index are assumed to be valid.
         """
@@ -1362,7 +1353,7 @@ cdef class Csound:
         """
         return cs.csoundGetTableArgs(self.ptr, argsPtr, tableNum)
 
-    cdef int is_named_gen(self, int num):
+    def is_named_gen(self, int num) -> int:
         """Checks if a given GEN number num is a named GEN
         if so, it returns the string length (excluding terminating NULL char)
         Otherwise it returns 0.
@@ -1379,7 +1370,7 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Function table display
 
-    cdef int set_is_graphable(self, int isGraphable):
+    def set_is_graphable(self, int isGraphable) -> int:
         """Tells Csound whether external graphic table display is supported.
         Returns the previously set value (initially zero).
         """
@@ -1445,14 +1436,15 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Utilities
     
-    cdef const char *get_env(self, const char *name):
+    cdef get_env(self, str name):
         """Get pointer to the value of environment variable 'name', searching
         in this order: local environment of 'csound' (if not NULL), variables
         set with csoundSetGlobalEnv(), and system environment variables.
         If 'csound' is not NULL, should be called after csoundCompile().
         Return value is NULL if the variable is not set.
         """
-        return cs.csoundGetEnv(self.ptr, name)
+        cdef const char *value = cs.csoundGetEnv(self.ptr, name.encode())
+        return value.decode()
 
     cdef int create_global_variable(self, const char *name, size_t nbytes):
         """Allocate nbytes bytes of memory that can be accessed later by calling
@@ -1486,6 +1478,7 @@ cdef class Csound:
         not defined.
         """
         return cs.csoundDestroyGlobalVariable(self.ptr, name)
+
     cdef int run_utility(self, const char *name, int argc, char **argv):
         """Run utility with the specified name and command line arguments.
         Should be called after loading utility plugins.
@@ -1746,7 +1739,7 @@ cdef destroy_cond_var(void* condVar):
     """
     cs.csoundDestroyCondVar(condVar)
 
-cdef csoundSleep(size_t milliseconds):
+cdef sleep(size_t milliseconds):
     """Waits for at least the specified number of milliseconds,
     yielding the CPU to other threads.
     """
