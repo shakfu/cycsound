@@ -14,5 +14,5 @@ repl:
 	@ipython -i scripts/load_csnd.py
 
 clean:
-	@rm -rf build
+	@rm -rf build __pycache__
 	@rm -f *.so
