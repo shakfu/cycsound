@@ -22,6 +22,7 @@ If this project develops further and becomes a bit more mature, it might be a us
 - [ ] complete wrapping of csound.h
 - [ ] feature parity with `ctcsound.py`
 
+There's also the question of the name... perhaps it better to call the project `cycsound`?
 
 ## Building
 
