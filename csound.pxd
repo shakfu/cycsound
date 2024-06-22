@@ -7,6 +7,16 @@ from libc cimport stdio
 #  include <stdarg.h>
 #  include <stdio.h>
 
+cdef extern from "stdarg.h":
+    ctypedef struct va_list:
+        pass
+    ctypedef struct fake_type:
+        pass
+    void va_start(va_list, void* arg)
+    void* va_arg(va_list, fake_type)
+    void va_end(va_list)
+    fake_type int_type "int"
+
 cdef extern from "csound.h":
     """
     #ifndef USE_DOUBLE
@@ -19,6 +29,7 @@ cdef extern from "csound.h":
     # Platform-dependent definitions and declarations.
     
     ctypedef float MYFLT
+    
     cdef enum CSOUND_STATUS:
         CSOUND_SUCCESS = 0
         CSOUND_ERROR = -1
@@ -276,6 +287,7 @@ cdef extern from "csound.h":
         int     type
         controlChannelHints_t    hints
 
+    ctypedef void (*channelCallback_t)(CSOUND *csound, const char *channelName, void *channelValuePtr, const void *channelType);
 
     int csoundInitialize(int flags)
     void csoundSetOpcodedir(const char* s)
@@ -384,11 +396,14 @@ cdef extern from "csound.h":
     void csoundSetCscoreCallback(CSOUND*, void (*cscoreCallback_)(CSOUND*))
     int csoundScoreSort(CSOUND*, stdio.FILE* inFile, stdio.FILE* outFile)
     int csoundScoreExtract(CSOUND*, stdio.FILE* inFile, stdio.FILE* outFile, stdio.FILE* extractFile)
-    # CS_PRINTF2 void csoundMessage(CSOUND*, const char* format, ...)
-    # CS_PRINTF3 void csoundMessageS(CSOUND*, int attr, const char* format, ...)
-    # void csoundMessageV(CSOUND*, int attr, const char* format, va_list args)
-    # void csoundSetDefaultMessageCallback(void (*csoundMessageCallback_)(CSOUND*, int attr, const char* format, va_list valist))
-    # void csoundSetMessageCallback(CSOUND*, void (*csoundMessageCallback_)(CSOUND*, int attr, const char* format,va_list valist))
+
+    void csoundMessage(CSOUND*, const char* format, ...)
+    void csoundMessageS(CSOUND*, int attr, const char* format, ...)
+
+    void csoundMessageV(CSOUND*, int attr, const char* format, va_list args)
+    void csoundSetDefaultMessageCallback(void (*csoundMessageCallback_)(CSOUND*, int attr, const char* format, va_list valist))
+    void csoundSetMessageCallback(CSOUND*, void (*csoundMessageCallback_)(CSOUND*, int attr, const char* format,va_list valist))
+
     void csoundSetMessageStringCallback(CSOUND* csound, void (*csoundMessageStrCallback)(CSOUND* csound, int attr, const char* str))
     int csoundGetMessageLevel(CSOUND*)
     void csoundSetMessageLevel(CSOUND*, int messageLevel)
@@ -411,8 +426,8 @@ cdef extern from "csound.h":
     void csoundGetStringChannel(CSOUND* csound, const char* name, char* string)
     void csoundSetStringChannel(CSOUND* csound, const char* name, char* string)
     int csoundGetChannelDatasize(CSOUND* csound, const char* name)
-    # void csoundSetInputChannelCallback(CSOUND* csound, channelCallback_t inputChannelCalback)
-    # void csoundSetOutputChannelCallback(CSOUND* csound, channelCallback_t outputChannelCalback)
+    void csoundSetInputChannelCallback(CSOUND* csound, channelCallback_t inputChannelCalback)
+    void csoundSetOutputChannelCallback(CSOUND* csound, channelCallback_t outputChannelCalback)
     int csoundSetPvsChannel(CSOUND*, const PVSDATEXT* fin, const char* name)
     int csoundGetPvsChannel(CSOUND* csound, PVSDATEXT* fout, const char* name)
     int csoundScoreEvent(CSOUND*, char type, const MYFLT* pFields, long numFields)
@@ -478,7 +493,7 @@ cdef extern from "csound.h":
     double csoundGetRealTime(RTCLOCK*)
     double csoundGetCPUTime(RTCLOCK*)
     uint32_t csoundGetRandomSeedFromTime()
-    # void csoundSetLanguage(cslanguage_t lang_code)
+    void csoundSetLanguage(cslanguage_t lang_code)
     const char* csoundGetEnv(CSOUND* csound, const char* name)
     int csoundSetGlobalEnv(const char* name, const char* value)
     int csoundCreateGlobalVariable(CSOUND*, const char* name, size_t nbytes)
@@ -501,3 +516,81 @@ cdef extern from "csound.h":
     int csoundOpenLibrary(void** library, const char* libraryPath)
     int csoundCloseLibrary(void* library)
     void* csoundGetLibrarySymbol(void* library, const char* symbolName)
+
+cdef extern from "text.h":
+
+    cdef enum cslanguage_t:
+        CSLANGUAGE_DEFAULT
+        CSLANGUAGE_AFRIKAANS
+        CSLANGUAGE_ALBANIAN
+        CSLANGUAGE_ARABIC
+        CSLANGUAGE_ARMENIAN
+        CSLANGUAGE_ASSAMESE
+        CSLANGUAGE_AZERI
+        CSLANGUAGE_BASQUE
+        CSLANGUAGE_BELARUSIAN
+        CSLANGUAGE_BENGALI
+        CSLANGUAGE_BULGARIAN
+        CSLANGUAGE_CATALAN
+        CSLANGUAGE_CHINESE
+        CSLANGUAGE_CROATIAN
+        CSLANGUAGE_CZECH
+        CSLANGUAGE_DANISH
+        CSLANGUAGE_DUTCH
+        CSLANGUAGE_ENGLISH_UK
+        CSLANGUAGE_ENGLISH_US
+        CSLANGUAGE_ESTONIAN
+        CSLANGUAGE_FAEROESE
+        CSLANGUAGE_FARSI
+        CSLANGUAGE_FINNISH
+        CSLANGUAGE_FRENCH
+        CSLANGUAGE_GEORGIAN
+        CSLANGUAGE_GERMAN
+        CSLANGUAGE_GREEK
+        CSLANGUAGE_GUJARATI
+        CSLANGUAGE_HEBREW
+        CSLANGUAGE_HINDI
+        CSLANGUAGE_HUNGARIAN
+        CSLANGUAGE_ICELANDIC
+        CSLANGUAGE_INDONESIAN
+        CSLANGUAGE_ITALIAN
+        CSLANGUAGE_JAPANESE
+        CSLANGUAGE_KANNADA
+        CSLANGUAGE_KASHMIRI
+        CSLANGUAGE_KAZAK
+        CSLANGUAGE_KONKANI
+        CSLANGUAGE_KOREAN
+        CSLANGUAGE_LATVIAN
+        CSLANGUAGE_LITHUANIAN
+        CSLANGUAGE_MACEDONIAN
+        CSLANGUAGE_MALAY
+        CSLANGUAGE_MALAYALAM
+        CSLANGUAGE_MANIPURI
+        CSLANGUAGE_MARATHI
+        CSLANGUAGE_NEPALI
+        CSLANGUAGE_NORWEGIAN
+        CSLANGUAGE_ORIYA
+        CSLANGUAGE_POLISH
+        CSLANGUAGE_PORTUGUESE
+        CSLANGUAGE_PUNJABI
+        CSLANGUAGE_ROMANIAN
+        CSLANGUAGE_RUSSIAN
+        CSLANGUAGE_SANSKRIT
+        CSLANGUAGE_SERBIAN
+        CSLANGUAGE_SINDHI
+        CSLANGUAGE_SLOVAK
+        CSLANGUAGE_SLOVENIAN
+        CSLANGUAGE_SPANISH
+        CSLANGUAGE_SWAHILI
+        CSLANGUAGE_SWEDISH
+        CSLANGUAGE_TAMIL
+        CSLANGUAGE_TATAR
+        CSLANGUAGE_TELUGU
+        CSLANGUAGE_THAI
+        CSLANGUAGE_TURKISH
+        CSLANGUAGE_UKRAINIAN
+        CSLANGUAGE_URDU
+        CSLANGUAGE_UZBEK
+        CSLANGUAGE_VIETNAMESE
+        CSLANGUAGE_COLUMBIAN
+

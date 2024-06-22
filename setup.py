@@ -9,11 +9,9 @@ from setuptools import Extension, setup
 # ----------------------------------------------------------------------------
 # helper funcs
 
-
 def getenv(key: str, default: bool = False) -> bool:
     """convert '0','1' env values to bool {True, False}"""
     return bool(int(os.getenv(key, default)))
-
 
 def get_min_osx_ver(platform, arch) -> str:
     min_osx_ver = os.getenv("MACOSX_DEPLOYMENT_TARGET")

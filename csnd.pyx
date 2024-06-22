@@ -85,8 +85,6 @@ cdef class ArgArray:
     def as_list(self):
         return list(self)
 
-
-
 ## ----------------------------------------------------------------------------
 ## Opaque classes
 
@@ -166,128 +164,245 @@ cdef class Params:
         return Params.from_ptr(ptr, owner=True)
 
     @property
-    def debug_mode(self):
+    def debug_mode(self) -> bint:
         return self.ptr.debug_mode
 
+    @debug_mode.setter
+    def debug_mode(self, bint value):
+        self.ptr.debug_mode = value
+
     @property
-    def buffer_frames(self):
+    def buffer_frames(self) -> int:
         return self.ptr.buffer_frames
 
+    @buffer_frames.setter
+    def buffer_frames(self, int value):
+        self.ptr.buffer_frames = value
+
     @property
-    def hardware_buffer_frames(self):
+    def hardware_buffer_frames(self) -> int:
         return self.ptr.hardware_buffer_frames
 
+    @hardware_buffer_frames.setter
+    def hardware_buffer_frames(self, int value):
+        self.ptr.hardware_buffer_frames = value
+
     @property
-    def displays(self):
+    def displays(self) -> bint:
         return self.ptr.displays
 
+    @displays.setter
+    def displays(self, bint value):
+        self.ptr.displays = value
+
     @property
-    def ascii_graphs(self):
+    def ascii_graphs(self) -> bint:
         return self.ptr.ascii_graphs
 
+    @ascii_graphs.setter
+    def ascii_graphs(self, bint value):
+        self.ptr.ascii_graphs = value
+
     @property
-    def postscript_graphs(self):
+    def postscript_graphs(self) -> bint:
         return self.ptr.postscript_graphs
 
+    @postscript_graphs.setter
+    def postscript_graphs(self, bint value):
+        self.ptr.postscript_graphs = value
+
     @property
-    def message_level(self):
+    def message_level(self) -> int:
         return self.ptr.message_level
 
+    @message_level.setter
+    def message_level(self, int value):
+        self.ptr.message_level = value
+
     @property
-    def tempo(self):
+    def tempo(self) -> int:
         return self.ptr.tempo
 
+    @tempo.setter
+    def tempo(self, int value):
+        self.ptr.tempo = value
+
     @property
-    def ring_bell(self):
+    def ring_bell(self) -> bint:
         return self.ptr.ring_bell
 
+    @ring_bell.setter
+    def ring_bell(self, bint value):
+        self.ptr.ring_bell = value
+
     @property
-    def defer_gen01_load(self):
+    def defer_gen01_load(self) -> bint:
         return self.ptr.defer_gen01_load
 
+    @defer_gen01_load.setter
+    def defer_gen01_load(self, bint value):
+        self.ptr.defer_gen01_load = value
+
     @property
-    def midi_key(self):
+    def midi_key(self) -> int:
         return self.ptr.midi_key
 
+    @midi_key.setter
+    def midi_key(self, int value):
+        self.ptr.midi_key = value
+
     @property
-    def midi_key_cps(self):
+    def midi_key_cps(self) -> int:
         return self.ptr.midi_key_cps
 
+    @midi_key_cps.setter
+    def midi_key_cps(self, int value):
+        self.ptr.midi_key_cps = value
+
     @property
-    def midi_key_oct(self):
+    def midi_key_oct(self) -> int:
         return self.ptr.midi_key_oct
 
+    @midi_key_oct.setter
+    def midi_key_oct(self, int value):
+        self.ptr.midi_key_oct = value
+
     @property
-    def midi_key_pch(self):
+    def midi_key_pch(self) -> int:
         return self.ptr.midi_key_pch
 
+    @midi_key_pch.setter
+    def midi_key_pch(self, int value):
+        self.ptr.midi_key_pch = value
+
     @property
-    def midi_velocity(self):
+    def midi_velocity(self) -> int:
         return self.ptr.midi_velocity
 
+    @midi_velocity.setter
+    def midi_velocity(self, int value):
+        self.ptr.midi_velocity = value
+
     @property
-    def midi_velocity_amp(self):
+    def midi_velocity_amp(self) -> int:
         return self.ptr.midi_velocity_amp
 
+    @midi_velocity_amp.setter
+    def midi_velocity_amp(self, int value):
+        self.ptr.midi_velocity_amp = value
+
     @property
-    def no_default_paths(self):
+    def no_default_paths(self) -> bint:
         return self.ptr.no_default_paths
 
+    @no_default_paths.setter
+    def no_default_paths(self, bint value):
+        self.ptr.no_default_paths = value
+
     @property
-    def number_of_threads(self):
+    def number_of_threads(self) -> int:
         return self.ptr.number_of_threads
 
+    @number_of_threads.setter
+    def number_of_threads(self, int value):
+        self.ptr.number_of_threads = value
+
     @property
-    def syntax_check_only(self):
+    def syntax_check_only(self) -> int:
         return self.ptr.syntax_check_only
 
+    @syntax_check_only.setter
+    def syntax_check_only(self, int value):
+        self.ptr.syntax_check_only = value
+
     @property
-    def csd_line_counts(self):
+    def csd_line_counts(self) -> int:
         return self.ptr.csd_line_counts
 
+    @csd_line_counts.setter
+    def csd_line_counts(self, int value):
+        self.ptr.csd_line_counts = value
+
     @property
-    def compute_weights(self):
+    def compute_weights(self) -> int:
         return self.ptr.compute_weights
 
+    @compute_weights.setter
+    def compute_weights(self, int value):
+        self.ptr.compute_weights = value
+
     @property
-    def realtime_mode(self):
+    def realtime_mode(self) -> bint:
         return self.ptr.realtime_mode
 
+    @realtime_mode.setter
+    def realtime_mode(self, bint value):
+        self.ptr.realtime_mode = value
+
     @property
-    def sample_accurate(self):
+    def sample_accurate(self) -> int:
         return self.ptr.sample_accurate
 
+    @sample_accurate.setter
+    def sample_accurate(self, int value):
+        self.ptr.sample_accurate = value
+
     @property
-    def sample_rate_override(self):
+    def sample_rate_override(self) -> float:
         return self.ptr.sample_rate_override
 
+    @sample_rate_override.setter
+    def sample_rate_override(self, float value):
+        self.ptr.sample_rate_override = value
+
     @property
-    def control_rate_override(self):
+    def control_rate_override(self) -> float:
         return self.ptr.control_rate_override
 
+    @control_rate_override.setter
+    def control_rate_override(self, float value):
+        self.ptr.control_rate_override = value
+
     @property
-    def nchnls_override(self):
+    def nchnls_override(self) -> int:
         return self.ptr.nchnls_override
 
+    @nchnls_override.setter
+    def nchnls_override(self, int value):
+        self.ptr.nchnls_override = value
+
     @property
-    def nchnls_i_override(self):
+    def nchnls_i_override(self) -> int:
         return self.ptr.nchnls_i_override
 
+    @nchnls_i_override.setter
+    def nchnls_i_override(self, int value):
+        self.ptr.nchnls_i_override = value
+
     @property
-    def e0dbfs_override(self):
+    def e0dbfs_override(self) -> float:
         return self.ptr.e0dbfs_override
 
+    @e0dbfs_override.setter
+    def e0dbfs_override(self, float value):
+        self.ptr.e0dbfs_override = value
+
     @property
-    def daemon(self):
+    def daemon(self) -> int:
         return self.ptr.daemon
 
-    @property
-    def ksmps_override(self):
-        return self.ptr.ksmps_override
+    @daemon.setter
+    def daemon(self, int value):
+        self.ptr.daemon = value
 
     @property
-    def FFT_library(self):
-        return self.ptr.FFT_library
+    def ksmps_override(self) -> int:
+        return self.ptr.ksmps_override
+
+    @ksmps_override.setter
+    def ksmps_override(self, int value):
+        self.ptr.ksmps_override = value
+
 
 ## ----------------------------------------------------------------------------
 ## Csound class
@@ -385,7 +500,6 @@ cdef class Csound:
               MYFLT retval = csoundEvalCode(csound, code);
         """
         return cs.csoundEvalCode(self.ptr, code.encode())
-
 
     cdef int initialize_cscore(self, stdio.FILE *insco, stdio.FILE *outsco):
         """Prepares an instance of Csound for Cscore processing outside of running an orchestra (i.e. "standalone Cscore").
@@ -735,7 +849,7 @@ cdef class Csound:
         """
         cs.csoundSetOutput(self.ptr, name.encode(), type.encode(), format.encode())
 
-    cdef get_output_format(self, char *type, char *format):
+    def get_output_format(self) -> (str, str):
         """Get output type and format.
         
         type should have space for at least 5 chars excluding termination,
@@ -744,25 +858,28 @@ cdef class Csound:
         On return, these will hold the current values for
         these parameters.
         """
+        cdef char type[5]
+        cdef char format[7]
         cs.csoundGetOutputFormat(self.ptr, type, format)
+        return (type.decode(), format.decode())
 
-    cdef set_input(self, str name):
+    def set_input(self, str name):
         """Set input source."""
         cs.csoundSetInput(self.ptr, name.encode())
 
-    cdef set_midi_input(self, str name):
+    def set_midi_input(self, str name):
         """Set MIDI input device name/number"""
         cs.csoundSetMIDIInput(self.ptr, name.encode())
 
-    cdef set_midi_file_input(self, str name):
+    def set_midi_file_input(self, str name):
         """Set MIDI file input name"""
         cs.csoundSetMIDIFileInput(self.ptr, name.encode())
 
-    cdef set_midi_output(self, str name):
+    def set_midi_output(self, str name):
         """Set MIDI output device name/numbe"""
         cs.csoundSetMIDIOutput(self.ptr, name.encode())
 
-    cdef set_midi_file_output(self, str name):
+    def set_midi_file_output(self, str name):
         """Set MIDI file output name"""
         cs.csoundSetMIDIFileOutput(self.ptr, name.encode())
 
@@ -783,7 +900,7 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Realtime Audio I/O
 
-    cdef set_rtaudio_Module(self, str module):
+    def set_rtaudio_Module(self, str module):
         """Sets the current RT audio module"""
         cs.csoundSetRTAudioModule(self.ptr, module.encode())
 
@@ -855,15 +972,12 @@ cdef class Csound:
         """
         cs.csoundSetSpinSample(self.ptr, frame, channel, sample)
 
-
     cdef cs.MYFLT *get_spout(self):
         """Returns the address of the Csound audio output working buffer (spout).
         Enables external software to read audio from Csound after calling
         csoundPerformKsmps.
         """
         return cs.csoundGetSpout(self.ptr)
-
-
 
     def get_spout_sample(self, int frame, int channel) -> float:
         """Returns the indicated sample from the Csound audio output
@@ -873,20 +987,15 @@ cdef class Csound:
         """
         return cs.csoundGetSpoutSample(self.ptr, frame, channel)
 
-
-
     cdef void **get_rt_record_userdata(self):
         """Return pointer to user data pointer for real time audio input."""
         return cs.csoundGetRtRecordUserData(self.ptr)
-
-
 
     cdef void **get_rt_play_userdata(self):
         """Return pointer to user data pointer for real time audio output."""
         return cs.csoundGetRtPlayUserData(self.ptr)
 
-
-    def set_host_implemented_audio_io(self, int state, int bufSize):
+    def set_host_implemented_audio_io(self, int state, int bufsize):
         """Calling this function with a non-zero 'state' value between
         csoundCreate() and the start of performance will disable all default
         handling of sound I/O by the Csound library, allowing the host
@@ -896,10 +1005,10 @@ cdef class Csound:
         set to the integer multiple of ksmps that is nearest to the value
         specified.
         """
-        cs.csoundSetHostImplementedAudioIO(self.ptr, state, bufSize)
+        cs.csoundSetHostImplementedAudioIO(self.ptr, state, bufsize)
 
 
-    cdef int get_audio_dev_list(self, cs.CS_AUDIODEVICE *list, int isOutput):
+    cdef int get_audio_dev_list(self, cs.CS_AUDIODEVICE *list, int is_output):
         """This function can be called to obtain a list of available
         input or output audio devices. If list is NULL, the function
         will only return the number of devices (isOutput=1 for out
@@ -921,7 +1030,7 @@ cdef class Csound:
                     i, devs[i].device_id, devs[i].device_name):
             free(devs);
         """
-        return cs.csoundGetAudioDevList(self.ptr, list, isOutput)
+        return cs.csoundGetAudioDevList(self.ptr, list, is_output)
 
 
     cdef set_play_open_callback(self, int (*playopen__)(cs.CSOUND *, const cs.csRtAudioParams *parm) noexcept):
@@ -1134,16 +1243,15 @@ cdef class Csound:
         """
         cs.csoundSetMessageStringCallback(self.ptr, csoundMessageStrCallback)
 
-
     def get_message_level(self) -> int:
         """Returns the Csound message level (from 0 to 231)."""
         return cs.csoundGetMessageLevel(self.ptr)
 
-    def set_message_level(self, int messageLevel):
+    def set_message_level(self, int msg_level):
         """Sets the Csound message level (from 0 to 231)."""
-        cs.csoundSetMessageLevel(self.ptr, messageLevel)
+        cs.csoundSetMessageLevel(self.ptr, msg_level)
 
-    cdef create_message_buffer(self, int toStdOut):
+    cdef create_message_buffer(self, int to_stdout):
         """Creates a buffer for storing messages printed by Csound.
         Should be called after creating a Csound instance andthe buffer
         can be freed by calling csoundDestroyMessageBuffer() before
@@ -1151,14 +1259,14 @@ cdef class Csound:
         csoundCleanup() to make sure the last messages are flushed to
         the message buffer before destroying Csound.
         
-        If 'toStdOut' is non-zero, the messages are also printed to
+        If 'to_stdout' is non-zero, the messages are also printed to
         stdout and stderr (depending on the type of the message),
         in addition to being stored in the buffer.
         Using the message buffer ties up the internal message callback, so
         csoundSetMessageCallback should not be called after creating the
         message buffer.
         """
-        cs.csoundCreateMessageBuffer(self.ptr, toStdOut)
+        cs.csoundCreateMessageBuffer(self.ptr, to_stdout)
 
     def get_first_message(self) -> str:
         """Returns the first message from the buffer."""
@@ -1392,14 +1500,13 @@ cdef class Csound:
         """
         cs.csoundScoreEventAbsoluteAsync(self.ptr, type, pfields, numFields, time_ofs)
 
-    cdef input_message(self, str message):
+    def input_message(self, str msg):
         """Input a NULL-terminated string (as if from a console), used for line events."""
-        cs.csoundInputMessage(self.ptr, message.encode())
+        cs.csoundInputMessage(self.ptr, msg.encode())
 
-    cdef input_message_async(self, const char *message):
-        """Asynchronous version of csoundInputMessage().
-        """
-        cs.csoundInputMessageAsync(self.ptr, message)
+    def input_message_async(self, str msg):
+        """Asynchronous version of csoundInputMessage()."""
+        cs.csoundInputMessageAsync(self.ptr, msg)
 
     cdef int kill_instance(self, cs.MYFLT instr, char *instrName, int mode, int allow_release):
         """Kills off one or more running instances of an instrument identified
@@ -1412,7 +1519,6 @@ cdef class Csound:
         allow_release, if non-zero, the killed instances are allowed to release.
         """
         return cs.csoundKillInstance(self.ptr, instr, instrName, mode, allow_release)
-
 
     cdef int register_sense_event_callback(self, void (*func)(cs.CSOUND *, void *) noexcept, void *userData):
         """Register a function to be called once in every control period
@@ -1477,8 +1583,7 @@ cdef class Csound:
         return cs.csoundRegisterKeyboardCallback(self.ptr, func, userData, type)
 
     cdef remove_keyboard_callback(self, int (*func)(void *, void *, unsigned int) noexcept):
-        """Removes a callback previously set with csoundRegisterKeyboardCallback().
-        """
+        """Removes a callback previously set with csoundRegisterKeyboardCallback()."""
         cs.csoundRemoveKeyboardCallback(self.ptr, func)
     
     ## ----------------------------------------------------------------------------
@@ -1793,10 +1898,9 @@ cdef void *create_thread2(cs.uintptr_t (*threadRoutine)(void *) noexcept, unsign
 
 
 cdef void *get_current_thread_id():
-    """
-    Returns the ID of the currently executing thread,
+    """Returns the ID of the currently executing thread,
     or NULL for failure.
-     *
+
     NOTE: The return value can be used as a pointer
     to a thread object, but it should not be compared
     as a pointer. The pointed to values should be compared,
@@ -1812,8 +1916,7 @@ cdef cs.uintptr_t join_thread(void *thread):
     return cs.csoundJoinThread(thread)
 
 cdef void *create_thread_lock():
-    """
-    Creates and returns a monitor object, or NULL if not successful.
+    """Creates and returns a monitor object, or NULL if not successful.
     The object is initially in signaled (notified) state.
     """
     return cs.csoundCreateThreadLock()
@@ -1845,12 +1948,8 @@ cdef destroy_thread_lock(void *lock):
     """
     cs.csoundDestroyThreadLock(lock)
 
-# ERROR:  cdef void *csoundCreateMutex(int isRecursive):
-
-
 cdef void *create_mutex(int isRecursive):
-    """
-    Creates and returns a mutex object, or NULL if not successful.
+    """Creates and returns a mutex object, or NULL if not successful.
     Mutexes can be faster than the more general purpose monitor objects
     returned by csoundCreateThreadLock() on some platforms, and can also
     be recursive, but the result of unlocking a mutex that is owned by
@@ -2031,8 +2130,6 @@ cdef cs.uint32_t get_random_seed_from_time():
 #     """
 #     cs.csoundSetLanguage(lang_code)
 
-
-
 cdef int set_global_env(const char *name, const char *value):
     """Set the global value of environment variable 'name' to 'value',
     or delete variable if 'value' is NULL.
@@ -2041,7 +2138,6 @@ cdef int set_global_env(const char *name, const char *value):
     Returns zero on success.
     """
     return cs.csoundSetGlobalEnv(name, value)
-
 
 cdef int rand31(int *seedVal):
     """Simple linear congruential random number generator:
