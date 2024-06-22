@@ -16,17 +16,17 @@ cdef extern from "Python.h":
 ## ----------------------------------------------------------------------------
 ## Instantiation
 
-def csoundInitialize(flags: int) -> int:
-    """Initialise Csound library with specific flags. 
+# def csoundInitialize(flags: int) -> int:
+#     """Initialise Csound library with specific flags. 
 
-    Called internally by `csoundCreate()`, so there is generally no need to use it
-    explicitly unless you need to avoid default initilization that sets
-    signal handlers and atexit() callbacks.
+#     Called internally by `csoundCreate()`, so there is generally no need to use it
+#     explicitly unless you need to avoid default initilization that sets
+#     signal handlers and atexit() callbacks.
 
-    Return value is zero on success, positive if initialisation was
-    done already, and negative on error.
-    """
-    return cs.csoundInitialize(flags)
+#     Return value is zero on success, positive if initialisation was
+#     done already, and negative on error.
+#     """
+#     return cs.csoundInitialize(flags)
 
 # see: https://cython.readthedocs.io/en/latest/src/userguide/faq.html#what-is-the-difference-between-pyobject-and-object
 # cdef cs.CSOUND *csoundCreate(void *hostData):

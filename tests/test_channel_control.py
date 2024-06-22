@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from random import randint, random
 
-import csnd
+import cycsound
 
 
 class RandomLine:
@@ -68,7 +68,7 @@ outs aout, aout
 endin"""
 
 def test_channels():
-    c = csnd.Csound()    # create an instance of Csound
+    c = cycsound.Csound()    # create an instance of Csound
     c.set_option("-odac")     # Set option for Csound
     c.set_option("-m7")       # Set option for Csound
     c.compile_orc(orc)        # Compile Orchestra from String

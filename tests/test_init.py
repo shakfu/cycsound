@@ -1,9 +1,9 @@
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import csnd
+import cycsound
 
 
 def test_csound():
-	c = csnd.Csound()
+	c = cycsound.Csound()
 

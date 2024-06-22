@@ -10,7 +10,7 @@ source, such as from a database or network.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import csnd
+import cycsound
 
 # Defining our Csound ORC code within a triple-quoted, multiline String
 orc = """
@@ -26,7 +26,7 @@ endin"""
 
 def test_compile_text():
     sco = "i1 0 1"
-    c = csnd.Csound()
+    c = cycsound.Csound()
     c.set_option("-odac")
     c.compile_orc(orc)
     c.read_score(sco)

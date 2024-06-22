@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from random import randint
 
-import csnd
+import cycsound
 
 
 def midi2pch(num):
@@ -56,7 +56,7 @@ outs aout, aout
 endin"""
 
 def test_midi():
-    c = csnd.Csound()    # create an instance of Csound
+    c = cycsound.Csound()    # create an instance of Csound
     c.set_option("-odac")  # Set option for Csound
     c.compile_orc(orc)     # Compile Orchestra from String
 

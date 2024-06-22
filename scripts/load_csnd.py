@@ -1,4 +1,4 @@
-import csnd
+import cycsound
 
-c = csnd.Csound()
+c = cycsound.Csound()
 

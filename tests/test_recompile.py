@@ -1,4 +1,4 @@
-"""Example 13 - Using csnd (works with Python 2 or 3) and recompiling
+"""Example 13 - Using cycsound (works with Python 2 or 3) and recompiling
 
 This example shows how to compile and start an instrument, run it then
 re-compile instr0 (global code) and start a new instance of instr 1
@@ -7,11 +7,11 @@ re-compile instr0 (global code) and start a new instance of instr 1
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import csnd
+import cycsound
 
 
 def test_recompile():
-    cs = csnd.Csound()  # start an instance of Csound
+    cs = cycsound.Csound()  # start an instance of Csound
     cs.set_option("-odac")   # add the option for realtime audio
     cs.compile_orc('''       
     gi1 init 1

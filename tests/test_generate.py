@@ -34,7 +34,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from random import randint
 
-import csnd
+import cycsound
 
 # Our Orchestra for our project
 orc = """
@@ -55,7 +55,7 @@ def test_generate():
     # Example 1 - Static Score
     sco = "i1 0 1 0.5 8.00"
 
-    c = csnd.Csound() # create an instance of Csound
+    c = cycsound.Csound() # create an instance of Csound
     c.set_option("-odac")  # Set option for Csound
     c.compile_orc(orc)     # Compile Orchestra from String
 

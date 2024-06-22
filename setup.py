@@ -36,7 +36,7 @@ VERSION = "0.0.1"
 # ----------------------------------------------------------------------------
 # OPTIONS (to be set as environment variables)
 
-# set csnd static or dynamic build here
+# set cycsound static or dynamic build here
 STATIC = getenv("STATIC")
 
 # ----------------------------------------------------------------------------
@@ -116,7 +116,7 @@ else:
     raise SystemExit("Platform not supported")
 
 extensions = [
-    Extension("csnd", ["csnd.pyx"],
+    Extension("cycsound", ["cycsound.pyx"],
         define_macros = [
             ('MYFLT', 'double'),
         ],
@@ -129,7 +129,7 @@ extensions = [
 
 
 setup(
-    name="csnd",
+    name="cycsound",
     description="csound wrapped by cython",
     ext_modules=cythonize(extensions, 
         compiler_directives={

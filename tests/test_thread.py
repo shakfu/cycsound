@@ -14,7 +14,7 @@ are doing with Csound are through events, and not using channels.
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import csnd
+import cycsound
 import pytest
 
 # Defining our Csound ORC code within a triple-quoted, multiline String
@@ -29,16 +29,16 @@ aout vco2 0.5, 440
 outs aout, aout
 endin"""
 
-@pytest.mark.skipif(not hasattr(csnd, 'CsoundPerformanceThread'),
+@pytest.mark.skipif(not hasattr(cycsound, 'CsoundPerformanceThread'),
                     reason="requires the CsoundPerformanceThread class")
 def test_thread():
     sco = "i1 0 1"
-    c = csnd.Csound()
+    c = cycsound.Csound()
     c.set_option("-odac")
     c.compile_orc(orc)
     c.read_score(sco)
     c.start()
-    t = csnd.CsoundPerformanceThread(c.csound())
+    t = cycsound.CsoundPerformanceThread(c.csound())
     t.play()
     t.join()
     c.stop()

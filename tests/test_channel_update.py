@@ -20,7 +20,7 @@ import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import pytest
-import csnd
+import cycsound
 from random import randint, random
 
 
@@ -47,7 +47,7 @@ class RandomLine:
 
 def createChannel(csound, channelName):
     chn, err = csound.channelPtr(channelName, 
-        csnd.CSOUND_CONTROL_CHANNEL | csnd.CSOUND_INPUT_CHANNEL)
+        cycsound.CSOUND_CONTROL_CHANNEL | cycsound.CSOUND_INPUT_CHANNEL)
     if err:
     	sys.exit(1)
     return chn
@@ -85,7 +85,7 @@ endin"""
                     reason="c.channelPtr not yet implemented")
 def test_channel_control():
 
-    c = csnd.Csound()    # create an instance of Csound
+    c = cycsound.Csound()    # create an instance of Csound
     c.set_option("-odac")  # Set option for Csound
     c.set_option("-m7")  # Set option for Csound
     c.compile_orc(orc)     # Compile Orchestra from String
