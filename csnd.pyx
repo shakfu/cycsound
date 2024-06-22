@@ -59,8 +59,8 @@ def get_size_of_myflt() -> int:
 ## ----------------------------------------------------------------------------
 ## Utility classes
 
-cdef class ParamArray:
-    """wrapper classs around parameter array"""
+cdef class ArgArray:
+    """wrapper classs around arg array"""
     cdef const char ** argv
     cdef int argc
 
@@ -69,6 +69,10 @@ cdef class ParamArray:
         self.argv = <const char **>malloc(self.argc * sizeof(char *))
         for i in range(self.argc):
             self.argv[i] = PyUnicode_AsUTF8(args[i])
+
+    def __dealloc__(self):
+        if self.argv:
+            free(self.argv)
 
     def __iter__(self):
         for i in range(self.argc):
@@ -81,9 +85,7 @@ cdef class ParamArray:
     def as_list(self):
         return list(self)
 
-    def __dealloc__(self):
-        if self.argv:
-            free(self.argv)
+
 
 ## ----------------------------------------------------------------------------
 ## Opaque classes
@@ -101,6 +103,191 @@ cdef class Tree:
         obj.ptr_owner = owner
         return obj
 
+cdef class Params:
+    """csound params class"""
+
+    cdef cs.CSOUND_PARAMS* ptr
+    cdef bint ptr_owner
+
+    def __cinit__(self):
+        self.ptr_owner = False
+
+    def __dealloc__(self):
+        if self.ptr is not NULL and self.ptr_owner is True:
+            free(self.ptr)
+            self.ptr = NULL
+
+    def __init__(self):
+        raise TypeError("This cannot be instatiated directly")
+
+    @staticmethod
+    cdef Params from_ptr(cs.CSOUND_PARAMS* ptr, bint owner=False):
+        cdef Params params = Params.__new__(Params)
+        params.ptr = ptr
+        params.ptr_owner = owner
+        return params
+
+    @staticmethod
+    cdef Params new():
+        cdef cs.CSOUND_PARAMS *ptr = <cs.CSOUND_PARAMS*>malloc(sizeof(cs.CSOUND_PARAMS))
+        if ptr is NULL:
+            raise MemoryError
+        ptr.debug_mode = 0
+        ptr.buffer_frames = 0
+        ptr.hardware_buffer_frames = 0
+        ptr.displays = 0
+        ptr.ascii_graphs = 0
+        ptr.postscript_graphs = 0
+        ptr.message_level = 0
+        ptr.tempo = 0
+        ptr.ring_bell = 0
+        ptr.defer_gen01_load = 0
+        ptr.midi_key = 0
+        ptr.midi_key_cps = 0
+        ptr.midi_key_oct = 0
+        ptr.midi_key_pch = 0
+        ptr.midi_velocity = 0
+        ptr.midi_velocity_amp = 0
+        ptr.no_default_paths = 0
+        ptr.number_of_threads = 0
+        ptr.syntax_check_only = 0
+        ptr.csd_line_counts = 0
+        ptr.compute_weights = 0
+        ptr.realtime_mode = 0
+        ptr.sample_accurate = 0
+        ptr.sample_rate_override = 0.0
+        ptr.control_rate_override = 0.0
+        ptr.nchnls_override = 0
+        ptr.nchnls_i_override = 0
+        ptr.e0dbfs_override = 0.0
+        ptr.daemon = 0
+        ptr.ksmps_override = 0
+        ptr.FFT_library = 0
+        return Params.from_ptr(ptr, owner=True)
+
+    @property
+    def debug_mode(self):
+        return self.ptr.debug_mode
+
+    @property
+    def buffer_frames(self):
+        return self.ptr.buffer_frames
+
+    @property
+    def hardware_buffer_frames(self):
+        return self.ptr.hardware_buffer_frames
+
+    @property
+    def displays(self):
+        return self.ptr.displays
+
+    @property
+    def ascii_graphs(self):
+        return self.ptr.ascii_graphs
+
+    @property
+    def postscript_graphs(self):
+        return self.ptr.postscript_graphs
+
+    @property
+    def message_level(self):
+        return self.ptr.message_level
+
+    @property
+    def tempo(self):
+        return self.ptr.tempo
+
+    @property
+    def ring_bell(self):
+        return self.ptr.ring_bell
+
+    @property
+    def defer_gen01_load(self):
+        return self.ptr.defer_gen01_load
+
+    @property
+    def midi_key(self):
+        return self.ptr.midi_key
+
+    @property
+    def midi_key_cps(self):
+        return self.ptr.midi_key_cps
+
+    @property
+    def midi_key_oct(self):
+        return self.ptr.midi_key_oct
+
+    @property
+    def midi_key_pch(self):
+        return self.ptr.midi_key_pch
+
+    @property
+    def midi_velocity(self):
+        return self.ptr.midi_velocity
+
+    @property
+    def midi_velocity_amp(self):
+        return self.ptr.midi_velocity_amp
+
+    @property
+    def no_default_paths(self):
+        return self.ptr.no_default_paths
+
+    @property
+    def number_of_threads(self):
+        return self.ptr.number_of_threads
+
+    @property
+    def syntax_check_only(self):
+        return self.ptr.syntax_check_only
+
+    @property
+    def csd_line_counts(self):
+        return self.ptr.csd_line_counts
+
+    @property
+    def compute_weights(self):
+        return self.ptr.compute_weights
+
+    @property
+    def realtime_mode(self):
+        return self.ptr.realtime_mode
+
+    @property
+    def sample_accurate(self):
+        return self.ptr.sample_accurate
+
+    @property
+    def sample_rate_override(self):
+        return self.ptr.sample_rate_override
+
+    @property
+    def control_rate_override(self):
+        return self.ptr.control_rate_override
+
+    @property
+    def nchnls_override(self):
+        return self.ptr.nchnls_override
+
+    @property
+    def nchnls_i_override(self):
+        return self.ptr.nchnls_i_override
+
+    @property
+    def e0dbfs_override(self):
+        return self.ptr.e0dbfs_override
+
+    @property
+    def daemon(self):
+        return self.ptr.daemon
+
+    @property
+    def ksmps_override(self):
+        return self.ptr.ksmps_override
+
+    @property
+    def FFT_library(self):
+        return self.ptr.FFT_library
 
 ## ----------------------------------------------------------------------------
 ## Csound class
@@ -205,10 +392,13 @@ cdef class Csound:
 
         It is an alternative to csoundCompile(), and csoundPerform*() and should
         not be used with these functions.
+
         You must call this function before using the interface in "cscore.h"
         when you do not wish to compile an orchestra.
+        
         Pass it the already open FILE* pointers to the input and
         output score files.
+        
         It returns cs.CSOUND_SUCCESS on success and cs.CSOUND_INITIALIZATION or other
         error code if it fails.
         """
@@ -217,7 +407,7 @@ cdef class Csound:
     def compile_args(self, *args) -> int:
         """Read arguments, parse and compile an orchestra, read, process and
         load a score."""
-        cdef ParamArray params = ParamArray(args)
+        cdef ArgArray params = ArgArray(args)
         return cs.csoundCompileArgs(self.ptr, params.argc, params.argv)
 
     def start(self) -> int:
@@ -253,7 +443,7 @@ cdef class Csound:
         Calls csoundStart() internally.
         Can only be called again after reset (see csoundReset())
         """
-        cdef ParamArray params = ParamArray(args)
+        cdef ArgArray params = ArgArray(args)
         return cs.csoundCompile(self.ptr, params.argc, params.argv)
 
     def compile_csd(self, str csd_filename) -> int:
@@ -473,7 +663,7 @@ cdef class Csound:
         """
         return cs.csoundSetOption(self.ptr, option.encode())
 
-    cdef set_params(self, cs.CSOUND_PARAMS *p):
+    def set_params(self, Params params):
         """Configure Csound with a given set of parameters defined in
         the cs.CSOUND_PARAMS structure. 
 
@@ -483,13 +673,15 @@ cdef class Csound:
         The cs.CSOUND_PARAMS structure can be obtained using csoundGetParams().
         These options should only be changed before performance has started.
         """
-        cs.csoundSetParams(self.ptr, p)
+        cs.csoundSetParams(self.ptr, params.ptr)
 
-    cdef get_params(self, cs.CSOUND_PARAMS *p):
+    def get_params(self) -> Params:
         """Get the current set of parameters from a cs.CSOUND instance in
         a cs.CSOUND_PARAMS structure. See csoundSetParams().
         """
-        cs.csoundSetParams(self.ptr, p)
+        cdef Params p = Params.new()
+        cs.csoundGetParams(self.ptr, p.ptr)
+        return p
 
     def get_debug(self):
         """Returns whether Csound is set to print debug messages sent through the
