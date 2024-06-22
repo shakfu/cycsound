@@ -1,32 +1,34 @@
-# Example 7 - Communicating continuous values with Csound's Channel System
+"""Example 7 - Communicating continuous values with Csound's Channel System
 
-# This example introduces using Csound's Channel System to communicate 
-# continuous control data (k-rate) from a host program to Csound. The 
-# first thing to note is the RandomLine class. It takes in a base value
-# and a range in which to vary randomly.  The reset functions calculates
-# a new random target value (self.end), a random duration in which to 
-# run (self.dur, expressed as # of audio blocks to last in duration), and
-# calculates the increment value to apply to the current value per audio-block.
-# When the target is met, the Randomline will reset itself to a new target
-# value and duration.
-# 
-# In this example, we use two RandomLine objects, one for amplitude and 
-# another for frequency.  We start a Csound instrument instance that reads
-# from two channels using the chnget opcode. In turn, we update the values
-# to the channel from the host program.  In this case, because we want to 
-# keep our values generating in sync with the audio engine, we use a 
-# while-loop instead of a CsoundPerformanceThread. To update the channel,
-# we call the SetChannel method on the Csound object, passing a channel name
-# and value.  Note: The getValue method on the RandomLine not only gets
-# us the current value, but also advances the internal state by the increment
-# and by decrementing the duration.
-import os
-import sys
+This example introduces using Csound's Channel System to communicate 
+continuous control data (k-rate) from a host program to Csound. The 
+first thing to note is the RandomLine class. It takes in a base value
+and a range in which to vary randomly.  The reset functions calculates
+a new random target value (self.end), a random duration in which to 
+run (self.dur, expressed as # of audio blocks to last in duration), and
+calculates the increment value to apply to the current value per audio-block.
+When the target is met, the Randomline will reset itself to a new target
+value and duration.
+
+In this example, we use two RandomLine objects, one for amplitude and 
+another for frequency.  We start a Csound instrument instance that reads
+from two channels using the chnget opcode. In turn, we update the values
+to the channel from the host program.  In this case, because we want to 
+keep our values generating in sync with the audio engine, we use a 
+while-loop instead of a CsoundPerformanceThread. To update the channel,
+we call the SetChannel method on the Csound object, passing a channel name
+and value.  Note: The getValue method on the RandomLine not only gets
+us the current value, but also advances the internal state by the increment
+and by decrementing the duration.
+"""
+
+import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from random import randint, random
 
 import csnd
-from random import randint, random
+
 
 class RandomLine:
     def __init__(self, base, range):

@@ -1,22 +1,21 @@
-import os
-import sys
+"""Example 4 - Using Csound's Performance Thread 
+
+In this example, we use a CsoundPerformanceThread to run Csound in 
+a native thread.  Using a native thread is important to get the best
+runtime performance for the audio engine.  It is especially important
+for languages such as Python that do not have true native threads
+and that use a Global Interpreter Lock. CsoundPerformanceThread has
+some convenient methods for handling events, but does not have
+features for doing regular processing at block boundaries.  In general,
+use CsoundPerformanceThread when the only kinds of communication you
+are doing with Csound are through events, and not using channels.
+"""
+
+import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import pytest
-
-# Example 4 - Using Csound's Performance Thread 
-
-# In this example, we use a CsoundPerformanceThread to run Csound in 
-# a native thread.  Using a native thread is important to get the best
-# runtime performance for the audio engine.  It is especially important
-# for languages such as Python that do not have true native threads
-# and that use a Global Interpreter Lock. CsoundPerformanceThread has
-# some convenient methods for handling events, but does not have
-# features for doing regular processing at block boundaries.  In general,
-# use CsoundPerformanceThread when the only kinds of communication you
-# are doing with Csound are through events, and not using channels.
-
 import csnd
+import pytest
 
 # Defining our Csound ORC code within a triple-quoted, multiline String
 orc = """

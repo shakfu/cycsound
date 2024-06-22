@@ -1,15 +1,14 @@
-import os
-import sys
+"""Example 2 - Compilation with Csound without CSD
+
+In this example, we move from using an external CSD file to 
+embedding our Csound ORC and SCO code within our Python project.
+Besides allowing encapsulating the code within the same file,
+using the CompileOrc() and CompileSco() API calls is useful when
+the SCO or ORC are generated, or perhaps coming from another 
+source, such as from a database or network.
+"""
+import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
-# Example 2 - Compilation with Csound without CSD
-
-# In this example, we move from using an external CSD file to 
-# embedding our Csound ORC and SCO code within our Python project.
-# Besides allowing encapsulating the code within the same file,
-# using the CompileOrc() and CompileSco() API calls is useful when
-# the SCO or ORC are generated, or perhaps coming from another 
-# source, such as from a database or network.
 
 import csnd
 

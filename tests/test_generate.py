@@ -1,6 +1,4 @@
-
-"""
-Example 5 - Generating Score
+"""Example 5 - Generating Score
 
 In this example, we will look at three techniques for generating our Score. 
 
@@ -31,12 +29,12 @@ Note, the three examples here are indicated with comments.  To listen to the exa
 look for the lines that have c.ReadScore(sco) (lines 80-82), uncomment the one
 you want to hear, and comment out the others. 
 """
-import os
-import sys
+import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import csnd
 from random import randint
+
+import csnd
 
 # Our Orchestra for our project
 orc = """

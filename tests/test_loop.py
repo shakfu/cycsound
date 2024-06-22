@@ -1,12 +1,11 @@
-import os
-import sys
+"""Example 3 - Using our own performance loop
+
+In this example, we use a while loop to perform Csound one audio block at a time.
+This technique is important to know as it will allow us to do further processing
+safely at block boundaries.  We will explore the technique further in later examples.
+"""
+import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
-# Example 3 - Using our own performance loop
-
-# In this example, we use a while loop to perform Csound one audio block at a time.
-# This technique is important to know as it will allow us to do further processing
-# safely at block boundaries.  We will explore the technique further in later examples.
 
 import csnd
 

@@ -1,24 +1,26 @@
-# Example 6 - Generating Score
+"""Example 6 - Generating Score
 
-# This example continues on from Example 5, rewriting the example using
-# a Class called Note. The note example has its __str__ method implemented
-# to generate a well-formatted Csound SCO note.  
-#
-# This example also shows how a list of notes could be used multiple times.
-# The first loop through we use the notes as-is, and during the second time
-# we generate the notes again with the same properties except we alter the 
-# fifth p-field up 4 semitones. 
-#
-# Note: Altering a Notes values like this is alright for this example, but 
-# it is a destructive edit.  Real world code might make copies of Notes or 
-# alter the score generation to maintain the original values. 
+This example continues on from Example 5, rewriting the example using
+a Class called Note. The note example has its __str__ method implemented
+to generate a well-formatted Csound SCO note.  
 
-import os
-import sys
+This example also shows how a list of notes could be used multiple times.
+The first loop through we use the notes as-is, and during the second time
+we generate the notes again with the same properties except we alter the 
+fifth p-field up 4 semitones. 
+
+Note: Altering a Notes values like this is alright for this example, but 
+it is a destructive edit.  Real world code might make copies of Notes or 
+alter the score generation to maintain the original values. 
+"""
+import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import csnd
+
 from random import randint
+
+import csnd
+
 
 def midi2pch(num):
     "Convert MIDI Note Numbers to Csound PCH format"

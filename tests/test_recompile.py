@@ -1,13 +1,14 @@
-# Example 13 - Using csnd (works with Python 2 or 3) and recompiling
-# Author: Victor Lazzarini <victor.lazzarini@nuim.ie>
-#
-# This example shows how to compile and start an instrument, run it then
-# re-compile instr0 (global code) and start a new instance of instr 1
-import os
-import sys
+"""Example 13 - Using csnd (works with Python 2 or 3) and recompiling
+
+This example shows how to compile and start an instrument, run it then
+re-compile instr0 (global code) and start a new instance of instr 1
+"""
+
+import os, sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-import csnd    
+import csnd
+
 
 def test_recompile():
     cs = csnd.Csound()  # start an instance of Csound
