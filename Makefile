@@ -1,21 +1,22 @@
 
-.PHONY: all build csnd test repl clean
+.PHONY: all build wheel test repl clean
 
-all: csnd
+all: build
 
-csnd:
+build:
 	@python3 setup.py build_ext --inplace	
 	@rm -rf ./build ./csnd.c
 
-test:
-	@python3 test_csnd.py
+wheel:
+	@STATIC=1 python3 setup.py bdist_wheel
+	@rm -rf csnd.egg-info
 
 repl:
 	@ipython -i scripts/load_csnd.py
 
 clean:
-	@rm -rf build __pycache__
-	@rm -f *.so
+	@rm -rf build __pycache__ dist csnd.egg-info
+	@rm -f csnd.c *.so
 
 test:
-	@pytest
+	@cd tests && pytest
