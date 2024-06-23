@@ -4,6 +4,8 @@ This is an early stage project to develop a cython wrapper of the csound api -- 
 
 There's a very good and well-maintained ctypes-based wrapper called `ctcsound.py` which is provided by default with csound. Anyone wanting to use python and csound should use that.
 
+Note: development is slowing down to consider upcoming changes in version 7 of the csound api
+
 
 ## Rationale
 
