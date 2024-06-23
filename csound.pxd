@@ -24,6 +24,7 @@ cdef extern from "csound.h":
     #else
     #define MYFLT double
     #endif
+    #define PUBLIC __attribute__ ( (visibility("default")) )
     """
 
     # Platform-dependent definitions and declarations.
@@ -519,8 +520,8 @@ cdef extern from "csound.h":
 
 cdef extern from "text.h":
 
-    cdef enum cslanguage_t:
-        CSLANGUAGE_DEFAULT
+    ctypedef enum cslanguage_t:
+        CSLANGUAGE_DEFAULT = 0
         CSLANGUAGE_AFRIKAANS
         CSLANGUAGE_ALBANIAN
         CSLANGUAGE_ARABIC
@@ -593,4 +594,3 @@ cdef extern from "text.h":
         CSLANGUAGE_UZBEK
         CSLANGUAGE_VIETNAMESE
         CSLANGUAGE_COLUMBIAN
-

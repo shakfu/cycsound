@@ -1,7 +1,6 @@
 from libc cimport stdio
 from cpython.ref cimport PyObject
 
-
 cimport csound as cs
 
 from libc.stdio cimport printf, fprintf, stderr, FILE
@@ -12,6 +11,7 @@ from libc.stdlib cimport malloc, free
 
 cdef extern from "Python.h":
     char* PyUnicode_AsUTF8(object unicode)
+
 
 ## ----------------------------------------------------------------------------
 ## Instantiation
@@ -468,7 +468,7 @@ cdef class Csound:
         """Free the resources associated with the Tree instance
         
         This function should be called whenever a Tree was
-        created with csound_parse_orc and memory can be deallocated.
+        created with csound.parse_orc() and memory can be deallocated.
         """
         cs.csoundDeleteTree(self.ptr, tree.ptr)
 
@@ -1732,10 +1732,11 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Utilities
     
-    cdef get_env(self, str name):
+    def get_env(self, str name) -> str:
         """Get pointer to the value of environment variable 'name', searching
         in this order: local environment of 'csound' (if not NULL), variables
         set with csoundSetGlobalEnv(), and system environment variables.
+
         If 'csound' is not NULL, should be called after csound.compile().
         Return value is NULL if the variable is not set.
         """
@@ -1746,6 +1747,7 @@ cdef class Csound:
         """Allocate nbytes bytes of memory that can be accessed later by calling
         csoundQueryGlobalVariable() with the specified name; the space is
         cleared to zero.
+
         Returns cs.CSOUND_SUCCESS on success, cs.CSOUND_ERROR in case of invalid
         parameters (zero nbytes, invalid or already used name), or
         cs.CSOUND_MEMORY if there is not enough memory.
@@ -2115,23 +2117,24 @@ cdef cs.uint32_t get_random_seed_from_time():
     """
     return cs.csoundGetRandomSeedFromTime()
 
-# cdef set_language(cs.cslanguage_t lang_code):
-#     """Set language to 'lang_code' (lang_code can be for example
-#     CSLANGUAGE_ENGLISH_UK or CSLANGUAGE_FRENCH or many others,
-#     see n_getstr.h for the list of languages). This affects all
-#     Csound instances running in the address space of the current
-#     process. The special language code CSLANGUAGE_DEFAULT can be
-#     used to disable translation of messages and free all memory
-#     allocated by a previous call to csoundSetLanguage().
-#     csoundSetLanguage() loads all files for the selected language
-#     from the directory specified by the CSSTRNGS environment
-#     variable.
-#     """
-#     cs.csoundSetLanguage(lang_code)
+cdef set_language(cs.cslanguage_t lang_code):
+    """Set language to 'lang_code' (lang_code can be for example
+    CSLANGUAGE_ENGLISH_UK or CSLANGUAGE_FRENCH or many others,
+    see n_getstr.h for the list of languages). This affects all
+    Csound instances running in the address space of the current
+    process. The special language code CSLANGUAGE_DEFAULT can be
+    used to disable translation of messages and free all memory
+    allocated by a previous call to csoundSetLanguage().
+    csoundSetLanguage() loads all files for the selected language
+    from the directory specified by the CSSTRNGS environment
+    variable.
+    """
+    cs.csoundSetLanguage(lang_code)
 
 cdef int set_global_env(const char *name, const char *value):
     """Set the global value of environment variable 'name' to 'value',
     or delete variable if 'value' is NULL.
+
     It is not safe to call this function while any Csound instances
     are active.
     Returns zero on success.
