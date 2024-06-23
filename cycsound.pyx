@@ -19,7 +19,7 @@ cdef extern from "Python.h":
 # def csoundInitialize(flags: int) -> int:
 #     """Initialise Csound library with specific flags. 
 
-#     Called internally by `csoundCreate()`, so there is generally no need to use it
+#     Called internally by `csound.create()`, so there is generally no need to use it
 #     explicitly unless you need to avoid default initilization that sets
 #     signal handlers and atexit() callbacks.
 
@@ -461,57 +461,60 @@ cdef class Csound:
         return cs.csoundCompileTree(self.ptr, root.ptr)
 
     def compile_tree_async(self, Tree root) -> int:
-        """Asynchronous version of csoundCompileTree()"""
+        """Asynchronous version of csound.compile_tree()"""
         return cs.csoundCompileTreeAsync(self.ptr, root.ptr)
 
     def delete_tree(self, Tree tree):
-        """Free the resources associated with the TREE *tree
+        """Free the resources associated with the Tree instance
         
-        This function should be called whenever the TREE was
-        created with csoundParseOrc and memory can be deallocated.
+        This function should be called whenever a Tree was
+        created with csound_parse_orc and memory can be deallocated.
         """
         cs.csoundDeleteTree(self.ptr, tree.ptr)
 
     def compile_orc(self, str orc) -> int:
-        """Parse, and compile the given orchestra from an ASCII string,
-        also evaluating any global space code (i-time only)
-        this can be called during performance to compile a new orchestra.
-            char *orc = "instr 1 \n a1 rand 0dbfs/4 \n out a1 \n";
-            csoundCompileOrc(csound, orc);
+        """Parse and compile the given orchestra from an ASCII string.
+
+        Also evaluates any global space code (i-time only), it can be
+        called during performance to compile a new orchestra.
+
+            orc = "instr 1 \n a1 rand 0dbfs/4 \n out a1 \n"
+            csound.compile_orc(orc)
         """
         return cs.csoundCompileOrc(self.ptr, orc.encode())
 
     def compile_orc_async(self, str orc) -> int:
-        """Async version of csoundCompileOrc().
+        """Async version of csound.compile_orc().
 
-        The code is parsed and compiled, then placed on a queue for
+        The code is parsed, compiled, then placed in a queue for
         asynchronous merge into the running engine, and evaluation.
         The function returns following parsing and compilation.
         """
         return cs.csoundCompileOrcAsync(self.ptr, orc.encode())
 
     def eval_code(self, str code) -> float:
-        """Parse and compile an orchestra given on an string,
-          evaluating any global space code (i-time only).
-          
-          On SUCCESS it returns a value passed to the
-          'return' opcode in global space
-              char *code = "i1 = 2 + 2 \n return i1 \n";
-              MYFLT retval = csoundEvalCode(csound, code);
+        """Parse and compile an orchestra given a string,
+
+        evaluating any global space code (i-time only).
+        On SUCCESS it returns a value passed to the
+        'return' opcode in global space
+
+              code = "i1 = 2 + 2 \n return i1 \n";
+              retval: float = csound.eval_code(code)
         """
         return cs.csoundEvalCode(self.ptr, code.encode())
 
     cdef int initialize_cscore(self, stdio.FILE *insco, stdio.FILE *outsco):
-        """Prepares an instance of Csound for Cscore processing outside of running an orchestra (i.e. "standalone Cscore").
+        """Prepares a Csound instance for cscore processing outside of running
+         an orchestra.
 
-        It is an alternative to csoundCompile(), and csoundPerform*() and should
-        not be used with these functions.
+        This "standalone cscore" mode, is an alternative to csound.compile(),
+        and csound.perform() and should not be used with these functions.
 
-        You must call this function before using the interface in "cscore.h"
+        This function must be called before using the interface in "cscore.h"
         when you do not wish to compile an orchestra.
         
-        Pass it the already open FILE* pointers to the input and
-        output score files.
+        Pass in already open input and output FILE* pointers to score files.
         
         It returns cs.CSOUND_SUCCESS on success and cs.CSOUND_INITIALIZATION or other
         error code if it fails.
@@ -540,22 +543,23 @@ cdef class Csound:
 
     def compile(self, *args) -> int:
         """Compiles Csound input files (such as an orchestra and score, or CSD)
-        as directed by the supplied command-line arguments,
-        but does not perform them.
+        as directed by the supplied command-line args without performnig them.
 
         Returns a non-zero error code on failure.
 
         This function cannot be called during performance, and before a
-        repeated call, csoundReset() needs to be called.
+        repeated call, csound.reset() needs to be called.
+
         In this (host-driven) mode, the sequence of calls should be as follows:
 
-              csoundCompile(csound, argc, argv);
-              while (!csoundPerformBuffer(csound));
-              csoundCleanup(csound);
-              csoundReset(csound);
+            csound.compile(*args)
+            while not csound.perform_buffer():
+                pass
+            csound.cleanup()
+            csound.reset()
 
-        Calls csoundStart() internally.
-        Can only be called again after reset (see csoundReset())
+        Calls csound.start() internally. Can only be called again after reset
+        (see csound.reset())
         """
         cdef ArgArray params = ArgArray(args)
         return cs.csoundCompile(self.ptr, params.argc, params.argv)
@@ -564,24 +568,21 @@ cdef class Csound:
         """Compiles a Csound input file (CSD, .csd file), but does not perform it.
         Returns a non-zero error code on failure.
 
-        If csoundStart is called before csoundCompileCsd, the <CsOptions>
-        element is ignored (but csoundSetOption can be called any number of
+        If csound.start() is called before csound.compile_csd(), the <CsOptions>
+        element is ignored (but csound.set_option() can be called any number of
         times), the <CsScore> element is not pre-processed, but dispatched as
         real-time events; and performance continues indefinitely, or until
-        ended by calling csoundStop or some other logic. In this "real-time"
+        ended by calling csound.stop() or some other logic. In this "real-time"
         mode, the sequence of calls should be:
 
-            csoundSetOption("-an_option");
-            csoundSetOption("-another_option");
-            csoundStart(csound);
-            csoundCompileCsd(csound, csd_filename);
-            while (1) {
-               csoundPerformBuffer(csound);
-               // Something to break out of the loop
-               // when finished here...
-            }
-            csoundCleanup(csound);
-            csoundReset(csound);
+            csound.set_option("-an_option")
+            csound.set_option("-another_option")
+            csound.start()
+            csound.compile_csd(csd_filename)
+            while not csound.perform_buffer():
+                pass
+            csound.cleanup()
+            csound.reset()
 
         NB: this function can be called repeatedly during performance to
         replace or add new instruments and events.
@@ -593,20 +594,18 @@ cdef class Csound:
         output real-time audio and handle real-time events), the sequence of
         calls should be:
 
-            csoundCompileCsd(csound, csd_filename);
-            csoundStart(csound);
-            while (1) {
-               int finished = csoundPerformBuffer(csound);
-               if (finished) break;
-            }
-            csoundCleanup(csound);
-            csoundReset(csound);
+            csound.compile_csd(csd_filename)
+            csound.start()
+            while not csound.perform_buffer():
+                pass
+            csound.cleanup()
+            csound.reset()
         """
         return cs.csoundCompileCsd(self.ptr, csd_filename.encode())
 
 
     def compile_csd_text(self, str csd_text) -> int:
-        """Behaves the same way as csoundCompileCsd, except that the content
+        """Behaves the same way as csound.compile_csd(), except that the content
         of the CSD is read from the csd_text string rather than from a file.
 
         This is convenient when it is desirable to package the csd as part of
@@ -618,14 +617,14 @@ cdef class Csound:
     def perform(self) -> int:
         """Senses input events and performs audio output until the end of score
         is reached (positive return value), an error occurs (negative return
-        value), or performance is stopped by calling csoundStop() from another
+        value), or performance is stopped by calling csound.stop() from another
         thread (zero return value).
 
-        Note that csoundCompile() or csoundCompileOrc(), csoundReadScore(),
-        csoundStart() must be called first.
+        Note that csound.compile() or csound.compile_orc(), csound.read_score(),
+        csound.start() must be called first.
 
-        In the case of zero return value, csoundPerform() can be called again
-        to continue the stopped performance. Otherwise, csoundReset() should be
+        In the case of zero return value, csound.perform() can be called again
+        to continue the stopped performance. Otherwise, csound.reset() should be
         called to clean up after the finished or failed performance.
         """
         return cs.csoundPerform(self.ptr)
@@ -634,8 +633,9 @@ cdef class Csound:
         """Senses input events, and performs one control sample worth (ksmps) of
         audio output.
 
-        Note that csoundCompile() or csoundCompileOrc(), csoundReadScore(),
-        csoundStart() must be called first.
+        Note that csound.compile() or csound.compile_orc(), csound.read_score(),
+        csound.start() must be called first.
+
         Returns false during performance, and true when performance is finished.
         If called until it returns true, will perform an entire score.
         Enables external software to control the execution of Csound,
@@ -649,16 +649,17 @@ cdef class Csound:
         and processing one buffer's worth (-b frames) of interleaved audio.
 
         Note that csoundCompile must be called first, then call
-        csoundGetOutputBuffer() and csoundGetInputBuffer() to get the pointer
+        csound.get_output_buffer() and csound.get_input_buffer()) to get the pointer
         to csound's I/O buffers.
+
         Returns false during performance, and true when performance is finished.
         """
         return cs.csoundPerformBuffer(self.ptr)
 
     def stop(self):
-        """Stops a csoundPerform() running in another thread.
+        """Stops a csound.perform() running in another thread.
 
-        Note that it is not guaranteed that csoundPerform() has already 
+        Note that it is not guaranteed that csound.perform() has already 
         stopped when this function returns.
         """
         cs.csoundStop(self.ptr)
@@ -667,7 +668,7 @@ cdef class Csound:
         """Prints information about the end of a performance, and closes audio
         and MIDI devices.
 
-        Note: after calling csoundCleanup(), the operation of the perform
+        Note: after calling csound.cleanup(), the operation of the perform
         functions is undefined.
         """
         return cs.csoundCleanup(self.ptr)
@@ -676,7 +677,7 @@ cdef class Csound:
         """Resets all internal memory and state in preparation for a new performance.
 
         Enables external software to run successive Csound performances
-        without reloading Csound. Implies csoundCleanup(), unless already called.
+        without reloading Csound. Implies csound.cleanup(), unless already called.
         """
         cs.csoundReset(self.ptr)
 
@@ -838,9 +839,9 @@ cdef class Csound:
     def set_output(self, str name, str type, str format):
         """Set output destination, type and format.
 
-        type can be one of  "wav","aiff", "au","raw", "paf", "svx", "nist", "voc",
-        "ircam","w64","mat4", "mat5", "pvf","xi", "htk","sds","avr","wavex","sd2",
-        "flac", "caf","wve","ogg","mpc2k","rf64", or NULL (use default or
+        type can be one of "wav", "aiff", "au","raw", "paf", "svx", "nist", "voc",
+        "ircam", "w64", "mat4", "mat5", "pvf", "xi", "htk", "sds", "avr", "wavex",
+        "sd2","flac", "caf", "wve", "ogg", "mpc2k", "rf64", or NULL (use default or
         realtime IO).
 
         format can be one of "alaw", "schar", "uchar", "float", "double", "long",
@@ -849,7 +850,7 @@ cdef class Csound:
         """
         cs.csoundSetOutput(self.ptr, name.encode(), type.encode(), format.encode())
 
-    def get_output_format(self) -> (str, str):
+    def get_output_format(self) -> tuple[str, str]:
         """Get output type and format.
         
         type should have space for at least 5 chars excluding termination,
@@ -884,8 +885,9 @@ cdef class Csound:
         cs.csoundSetMIDIFileOutput(self.ptr, name.encode())
 
     cdef set_file_open_callback(self, void (*func)(cs.CSOUND*, const char*, int, int, int) noexcept):
-        """Sets an external callback for receiving notices whenever Csound opens
-        a file.  The callback is made after the file is successfully opened.
+        """Sets an external callback for receiving notices whenever Csound opens a file.
+
+        The callback is made after the file is successfully opened.
         The following information is passed to the callback:
             char*  pathname of the file; either full or relative to current dir
             int    a file type code from the enumeration cs.CSOUND_FILETYPES
@@ -893,14 +895,14 @@ cdef class Csound:
             int    1 if a temporary file that Csound will delete; 0 if not
 
         Pass NULL to disable the callback.
-        This callback is retained after a csoundReset() call.
+        This callback is retained after a csound.reset() call.
         """
         cs.csoundSetFileOpenCallback(self.ptr, func)
 
     ## ----------------------------------------------------------------------------
     ## Realtime Audio I/O
 
-    def set_rtaudio_Module(self, str module):
+    def set_rtaudio_module(self, str module):
         """Sets the current RT audio module"""
         cs.csoundSetRTAudioModule(self.ptr, module.encode())
 
@@ -914,10 +916,8 @@ cdef class Csound:
             int n = 0;
             while(!csoundGetModule(csound, n++, &name, &type))
                 printf("Module %d:  %s (%s) \n", n, name, type);
-
         """
         return cs.csoundGetModule(self.ptr, number, name, type)
-
 
     def get_input_buffersize(self) -> int:
         """Returns the number of samples in Csound's input buffer."""
@@ -931,7 +931,7 @@ cdef class Csound:
         """Returns the address of the Csound audio input buffer.
 
         Enables external software to write audio into Csound before calling
-        csoundPerformBuffer.
+        csound.perform_buffer().
         """
         return cs.csoundGetInputBuffer(self.ptr)
 
@@ -939,7 +939,7 @@ cdef class Csound:
         """Returns the address of the Csound audio output buffer.
 
         Enables external software to read audio from Csound after calling
-        csoundPerformBuffer.
+        csound.perform_buffer().
         """
         return cs.csoundGetOutputBuffer(self.ptr)
 
@@ -947,7 +947,7 @@ cdef class Csound:
         """Returns the address of the Csound audio input working buffer (spin).
 
         Enables external software to write audio into Csound before calling
-        csoundPerformKsmps.
+        csound.perform_ksmps().
         """
         return cs.csoundGetSpin(self.ptr)
 
@@ -955,13 +955,12 @@ cdef class Csound:
         """Clears the input buffer (spin)."""
         cs.csoundClearSpin(self.ptr)
 
-
     def add_spin_sample(self, int frame, int channel, float sample):
         """Adds the indicated sample into the audio input working buffer (spin):
-        this only ever makes sense before calling csoundPerformKsmps().
+        this only ever makes sense before calling csound.perform_ksmps().
         The frame and channel must be in bounds relative to ksmps and nchnls.
         NB: the spin buffer needs to be cleared at every k-cycle by calling
-        csoundClearSpinBuffer().
+        csound.clear_spin_buffer().
         """
         cs.csoundAddSpinSample(self.ptr, frame, channel, sample)
 
@@ -1138,7 +1137,7 @@ cdef class Csound:
         return cs.csoundReadScore(self.ptr, score.encode())
 
     def read_score_async(self, str score):
-        """Asynchronous version of csoundReadScore()."""
+        """Asynchronous version of csound.read_score()."""
         return cs.csoundReadScoreAsync(self.ptr, score.encode())
 
     def get_score_time(self) -> float:
@@ -1192,14 +1191,14 @@ cdef class Csound:
         Pass NULL to reset to the internal cscore() function
         (which does nothing).
 
-        This callback is retained after a csoundReset() call.
+        This callback is retained after a csound.reset() call.
         """
         cs.csoundSetCscoreCallback(self.ptr, cscoreCallback_)
 
     cdef int score_sort(self, stdio.FILE *inFile, stdio.FILE *outFile):
         """Sorts score file 'inFile' and writes the result to 'outFile'.
         The Csound instance should be initialised
-        before calling this function, and csoundReset() should be called
+        before calling this function, and csound.reset() should be called
         after sorting the score to clean up. On success, zero is returned.
         """
         return cs.csoundScoreSort(self.ptr, inFile, outFile)
@@ -1207,7 +1206,7 @@ cdef class Csound:
     cdef int score_extract(self, stdio.FILE *inFile, stdio.FILE *outFile, stdio.FILE *extractFile):
         """Extracts from 'inFile', controlled by 'extractFile', and writes
         the result to 'outFile'. The Csound instance should be initialised
-        before calling this function, and csoundReset()
+        before calling this function, and csound.reset()
         should be called after score extraction to clean up.
         The return value is zero on success.
         """
@@ -1256,7 +1255,7 @@ cdef class Csound:
         Should be called after creating a Csound instance andthe buffer
         can be freed by calling csoundDestroyMessageBuffer() before
         deleting the Csound instance. You will generally want to call
-        csoundCleanup() to make sure the last messages are flushed to
+        csound.cleanup() to make sure the last messages are flushed to
         the message buffer before destroying Csound.
         
         If 'to_stdout' is non-zero, the messages are also printed to
@@ -1315,7 +1314,7 @@ cdef class Csound:
         If the channel already exists, it must match the data type
         (control, audio, or string), however, the input/output bits are
         OR'd with the new value. Note that audio and string channels
-        can only be created after calling csoundCompile(), because the
+        can only be created after calling csound.compile(), because the
         storage size is not known until then.
 
         Return value is zero on success, or a negative error code,
@@ -1354,7 +1353,7 @@ cdef class Csound:
         the list. In the case of no channels or an error, *lst is set to NULL.
         Notes: the caller is responsible for freeing the list returned in *lst
         with csoundDeleteChannelList(). The name pointers may become invalid
-        after calling csoundReset().
+        after calling csound.reset().
         """
         return cs.csoundListChannels(self.ptr, lst)
 
@@ -1529,7 +1528,7 @@ cdef class Csound:
         This facility can be used to ensure a function is called synchronously
         before every csound control buffer processing. It is important
         to make sure no blocking operations are performed in the callback.
-        The callbacks are cleared on csoundCleanup().
+        The callbacks are cleared on csound.cleanup().
         Returns zero on success.
         """
         return cs.csoundRegisterSenseEventCallback(self.ptr, func, userData)
@@ -1546,7 +1545,7 @@ cdef class Csound:
         """Registers general purpose callback functions that will be called to query
         keyboard events. These callbacks are called on every control period by
         the sensekey opcode.
-        The callback is preserved on csoundReset(), and multiple
+        The callback is preserved on csound.reset(), and multiple
         callbacks may be set and will be called in reverse order of
         registration. If the same function is set again, it is only moved
         in the list of callbacks so that it will be called first, and the
@@ -1703,7 +1702,7 @@ cdef class Csound:
 
     cdef int new_opcode_list(self, cs.opcodeListEntry** opcodelist):
         """Gets an alphabetically sorted list of all opcodes.
-        Should be called after externals are loaded by csoundCompile().
+        Should be called after externals are loaded by csound.compile().
         Returns the number of opcodes, or a negative error code on failure.
         Make sure to call csoundDisposeOpcodeList() when done with the list.
         """
@@ -1737,7 +1736,7 @@ cdef class Csound:
         """Get pointer to the value of environment variable 'name', searching
         in this order: local environment of 'csound' (if not NULL), variables
         set with csoundSetGlobalEnv(), and system environment variables.
-        If 'csound' is not NULL, should be called after csoundCompile().
+        If 'csound' is not NULL, should be called after csound.compile().
         Return value is NULL if the variable is not set.
         """
         cdef const char *value = cs.csoundGetEnv(self.ptr, name.encode())
@@ -1779,7 +1778,7 @@ cdef class Csound:
     cdef int run_utility(self, const char *name, int argc, char **argv):
         """Run utility with the specified name and command line arguments.
         Should be called after loading utility plugins.
-        Use csoundReset() to clean up after calling this function.
+        Use csound.reset() to clean up after calling this function.
         Returns zero if the utility was run successfully.
         """
         return cs.csoundRunUtility(self.ptr, name, argc, argv)

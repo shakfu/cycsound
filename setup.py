@@ -28,6 +28,20 @@ def get_homebrew_prefix() -> Path:
         raise SystemExit("Homebrew requirded for macOS static build")
     return Path(prefix)
 
+def check_static_libs(dep_lib_paths):
+    fail=False
+    msgs = []
+    for p in dep_lib_paths:
+        if os.path.exists(p):
+            msgs.append(f"Found: {p}")
+        else:
+            msgs.append(f"Not Found: {p}")
+            fail=True
+    if fail:
+        for m in msgs:
+            print(m)
+        raise SystemExit()
+
 # ----------------------------------------------------------------------------
 # VARS
 
@@ -81,8 +95,10 @@ if PLATFORM == "Darwin":
             'libmp3lame.a',
         ]
 
+        dep_lib_paths = [str(homebrew_lib / lib) for lib in dep_libs]
+        check_static_libs(dep_lib_paths)
         EXTRA_OBJECTS = [str(framework / lib) for lib in csound_libs]
-        EXTRA_OBJECTS.extend([str(homebrew_lib / lib) for lib in dep_libs])
+        EXTRA_OBJECTS.extend(dep_lib_paths)
         LIBRARY_DIRS = [str(homebrew_lib)]
         LIBRARIES = ['curl']
 
