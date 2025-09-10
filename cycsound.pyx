@@ -2049,45 +2049,43 @@ cdef sleep(size_t milliseconds):
     """
     cs.csoundSleep(milliseconds)
 
-# cdef int spin_lock_init(cs.spin_lock_t *spinlock):
-#     """If the spinlock is not locked, lock it and return;
-#     if is is locked, wait until it is unlocked, then lock it and return.
-#     Uses atomic compare and swap operations that are safe across processors
-#     and safe for out of order operations,
-#     and which are more efficient than operating system locks.
-#     Use spinlocks to protect access to shared data, especially in functions
-#     that do little more than read or write such data, for example:
-#      *
-#     @code
-#     static spin_lock_t lock = SPINLOCK_INIT;
-#     csoundSpinLockInit(&lock):
-#     void write(size_t frames, int* signal)
-#     {
-#       csoundSpinLock(&lock):
-#       for (size_t frame = 0; i < frames; frame++) {
-#         global_buffer[frame] += signal[frame];
-#       }
-#       csoundSpinUnlock(&lock):
-#     }
-#     @endcode
-#     """
-#     return cs.csoundSpinLockInit(spinlock)
+cdef int spin_lock_init(cs.spin_lock_t *spinlock):
+    """If the spinlock is not locked, lock it and return;
+    if is is locked, wait until it is unlocked, then lock it and return.
+    Uses atomic compare and swap operations that are safe across processors
+    and safe for out of order operations,
+    and which are more efficient than operating system locks.
+    Use spinlocks to protect access to shared data, especially in functions
+    that do little more than read or write such data, for example:
+     *
+    @code
+    static spin_lock_t lock = SPINLOCK_INIT;
+    csoundSpinLockInit(&lock):
+    void write(size_t frames, int* signal)
+    {
+      csoundSpinLock(&lock):
+      for (size_t frame = 0; i < frames; frame++) {
+        global_buffer[frame] += signal[frame];
+      }
+      csoundSpinUnlock(&lock):
+    }
+    @endcode
+    """
+    return cs.csoundSpinLockInit(spinlock)
 
-# cdef spin_lock(cs.spin_lock_t *spinlock):
-#     """Locks the spinlock
-#     """
-#     cs.csoundSpinLock( )
+cdef spin_lock(cs.spin_lock_t *spinlock):
+    """Locks the spinlock"""
+    cs.csoundSpinLock(spinlock)
 
-# cdef int spin_try_lock(cs.spin_lock_t *spinlock):
-#     """Tries the lock, returns cs.CSOUND_SUCCESS if lock could be acquired,
-#         cs.CSOUND_ERROR, otherwise.
-#     """
-#     return cs.csoundSpinTryLock(spinlock)
+cdef int spin_try_lock(cs.spin_lock_t *spinlock):
+    """Tries the lock, returns cs.CSOUND_SUCCESS if lock could be acquired,
+        cs.CSOUND_ERROR, otherwise.
+    """
+    return cs.csoundSpinTryLock(spinlock)
 
-# cdef  spin_un_lock(cs.spin_lock_t *spinlock):
-#     """Unlocks the spinlock
-#     """
-#     cs.csoundSpinUnLock(spinlock)
+cdef spin_un_lock(cs.spin_lock_t *spinlock):
+    """Unlocks the spinlock"""
+    cs.csoundSpinUnLock(spinlock)
 
 
 ## ----------------------------------------------------------------------------

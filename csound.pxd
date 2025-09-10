@@ -1,11 +1,7 @@
 from libc cimport stdint
 from libc cimport stdio
+from libc.stdint cimport int32_t
 
-
-
-#  include "text.h"
-#  include <stdarg.h>
-#  include <stdio.h>
 
 cdef extern from "stdarg.h":
     ctypedef struct va_list:
@@ -16,6 +12,10 @@ cdef extern from "stdarg.h":
     void* va_arg(va_list, fake_type)
     void va_end(va_list)
     fake_type int_type "int"
+
+
+cdef extern from "sysdep.h":
+    ctypedef int32_t spin_lock_t
 
 cdef extern from "csound.h":
     """
@@ -485,10 +485,10 @@ cdef extern from "csound.h":
     void csoundCondSignal(void* condVar)
     void csoundDestroyCondVar(void* condVar)
     void csoundSleep(size_t milliseconds)
-    # int csoundSpinLockInit(spin_lock_t* spinlock)
-    # void csoundSpinLock(spin_lock_t* spinlock)
-    # int csoundSpinTryLock(spin_lock_t* spinlock)
-    # void csoundSpinUnLock(spin_lock_t* spinlock)
+    int csoundSpinLockInit(spin_lock_t* spinlock)
+    void csoundSpinLock(spin_lock_t* spinlock)
+    int csoundSpinTryLock(spin_lock_t* spinlock)
+    void csoundSpinUnLock(spin_lock_t* spinlock)
     long csoundRunCommand(const char* const* argv, int noWait)
     void csoundInitTimerStruct(RTCLOCK*)
     double csoundGetRealTime(RTCLOCK*)
@@ -597,14 +597,12 @@ cdef extern from "text.h":
 
     # DEPRECATED -------------------------------------------------------------------
 
-    # Missing callback typedefs for new functions
-    ctypedef void (*CsoundChannelIOCallback_t)(CSOUND *csound, const char *channelName, void *channelValuePtr, const void *channelType)
-    ctypedef void (*inputValueCallback_t)(CSOUND *csound, const char *channelName, MYFLT *value)
-    ctypedef void (*outputValueCallback_t)(CSOUND *csound, const char *channelName, MYFLT value)
-
-    # Missing API functions (available in this Csound version)
+    # Callback typedefs for new functions
+    # ctypedef void (*CsoundChannelIOCallback_t)(CSOUND *csound, const char *channelName, void *channelValuePtr, const void *channelType)
+    # ctypedef void (*inputValueCallback_t)(CSOUND *csound, const char *channelName, MYFLT *value)
+    # ctypedef void (*outputValueCallback_t)(CSOUND *csound, const char *channelName, MYFLT value)
 
     # Channel I/O Callbacks 
-    void csoundSetChannelIOCallback(CSOUND *, CsoundChannelIOCallback_t func)
-    void csoundSetInputValueCallback(CSOUND *, inputValueCallback_t func)
-    void csoundSetOutputValueCallback(CSOUND *, outputValueCallback_t func)
+    # void csoundSetChannelIOCallback(CSOUND *, CsoundChannelIOCallback_t func)
+    # void csoundSetInputValueCallback(CSOUND *, inputValueCallback_t func)
+    # void csoundSetOutputValueCallback(CSOUND *, outputValueCallback_t func)
