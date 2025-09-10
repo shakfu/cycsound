@@ -56,8 +56,8 @@ def get_size_of_myflt() -> int:
     """Return the size of MYFLT in bytes."""
     return cs.csoundGetSizeOfMYFLT()
 
-# Note: Some functions like csoundGetInstance and csoundQueryInterface
-# are conditionally compiled and not available in all Csound builds
+# Note: 
+#   csoundGetInstance requires SWIGPYTHON compile definition
 
 ## ----------------------------------------------------------------------------
 ## Utility classes
@@ -1883,47 +1883,12 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Missing API functions (completing the API coverage)
 
-# Note: csoundPerformKsmpsAbsolute is conditionally compiled and not available in this build
-
-    def set_channel_io_callback(self, callback):
-        """Set a callback function for channel I/O operations.
-
-        The callback will be called when channel values are accessed,
-        allowing for custom handling of channel I/O.
-
-        Args:
-            callback: A callable that takes (csound, channel_name, channel_value_ptr, channel_type)
-        """
-        # Note: This requires Python callback wrapper implementation
-        # For now, we provide the low-level interface
-        pass  # TODO: Implement Python callback wrapper
-
-    def set_input_value_callback(self, callback):
-        """Set a callback function for input value changes.
-
-        The callback will be called when input channel values change,
-        allowing for real-time monitoring of input channels.
-
-        Args:
-            callback: A callable that takes (csound, channel_name, value)
-        """
-        # Note: This requires Python callback wrapper implementation
-        # For now, we provide the low-level interface
-        pass  # TODO: Implement Python callback wrapper
-
-    def set_output_value_callback(self, callback):
-        """Set a callback function for output value changes.
-
-        The callback will be called when output channel values change,
-        allowing for real-time monitoring of output channels.
-
-        Args:
-            callback: A callable that takes (csound, channel_name, value)
-        """
-        # Note: This requires Python callback wrapper implementation
-        # For now, we provide the low-level interface
-        pass  # TODO: Implement Python callback wrapper
-
+    # Note: The following are deprecated and require SOME_FINE_DAY compile def
+    #   csoundQueryInterface
+    #   csoundSetInputValueCallback
+    #   csoundSetOutputValueCallback
+    #   csoundSetChannelIOCallback
+    #   csoundPerformKsmpsAbsolute
 
 cdef void *create_thread(cs.uintptr_t (*threadRoutine)(void *) noexcept, void *userdata):
     """
