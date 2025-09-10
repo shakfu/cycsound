@@ -594,3 +594,15 @@ cdef extern from "text.h":
         CSLANGUAGE_UZBEK
         CSLANGUAGE_VIETNAMESE
         CSLANGUAGE_COLUMBIAN
+
+    # Missing callback typedefs for new functions
+    ctypedef void (*CsoundChannelIOCallback_t)(CSOUND *csound, const char *channelName, void *channelValuePtr, const void *channelType)
+    ctypedef void (*inputValueCallback_t)(CSOUND *csound, const char *channelName, MYFLT *value)
+    ctypedef void (*outputValueCallback_t)(CSOUND *csound, const char *channelName, MYFLT value)
+
+    # Missing API functions (available in this Csound version)
+
+    # Channel I/O Callbacks
+    void csoundSetChannelIOCallback(CSOUND *, CsoundChannelIOCallback_t func)
+    void csoundSetInputValueCallback(CSOUND *, inputValueCallback_t func)
+    void csoundSetOutputValueCallback(CSOUND *, outputValueCallback_t func)
