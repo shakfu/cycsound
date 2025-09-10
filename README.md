@@ -4,8 +4,7 @@ This is an early stage project to develop a cython wrapper of the csound 6.x api
 
 There's a very good and well-maintained ctypes-based wrapper called `ctcsound.py` which is provided by default with csound. Anyone wanting to use python and csound should use that.
 
-Note: As there is another version (7.x) of csound being developed in the [develop branch](https://github.com/csound/csound) of csound, the `dev` branch of this project will track that once it is released.
-
+Note: There is a new version (7.x) of csound being developed in the [develop branch](https://github.com/csound/csound) of csound, the `dev` branch of this project will track that once it is released and is stable.
 
 ## Rationale
 
@@ -18,10 +17,11 @@ If this project develops further and becomes a bit more mature, it might be a us
 
 - [x] wrap enough to play arbitrary csd files
 - [x] build static variant as wheel (macOS only)
-- [ ] include support for plugins in wheel
-- [ ] unittests (partially implemented)
-- [ ] threaded / async / non-blocking performance
+- [x] partial wrapping of csound.h
 - [ ] complete wrapping of csound.h
+- [ ] unittests (partially implemented)
+- [ ] include support for plugins in wheel
+- [ ] threaded / async / non-blocking performance
 - [ ] feature parity with `ctcsound.py`
 
 

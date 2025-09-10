@@ -1,3 +1,5 @@
+from enum import Enum
+
 from libc cimport stdio
 from cpython.ref cimport PyObject
 
@@ -14,31 +16,78 @@ cdef extern from "Python.h":
 
 
 ## ----------------------------------------------------------------------------
+## Message Types
+
+class Msg(Enum):
+    """message types (only one can be specified)
+    
+    for example:
+        Msg.DEFAULT | Color.FG_CYAN | Color.FG_BOLD
+    """
+    DEFAULT       = 0x0000    # standard message
+    ERROR         = 0x1000    # error message (initerror, perferror, etc.)
+    ORCH          = 0x2000    # orchestra opcodes (e.g. printks)
+    REALTIME      = 0x3000    # for progress display and heartbeat characters
+    WARNING       = 0x4000    # warning messages
+    STDOUT        = 0x5000    # stdout messages
+
+class Color(Enum):
+    """Use the bitwise OR of any of these with messages."""
+
+    FG_BLACK      = 0x0100
+    FG_RED        = 0x0101
+    FG_GREEN      = 0x0102
+    FG_YELLOW     = 0x0103
+    FG_BLUE       = 0x0104
+    FG_MAGENTA    = 0x0105
+    FG_CYAN       = 0x0106
+    FG_WHITE      = 0x0107
+
+    FG_BOLD       = 0x0008
+    FG_UNDERLINE  = 0x0080
+
+    BG_BLACK      = 0x0200
+    BG_RED        = 0x0210
+    BG_GREEN      = 0x0220
+    BG_ORANGE     = 0x0230
+    BG_BLUE       = 0x0240
+    BG_MAGENTA    = 0x0250
+    BG_CYAN       = 0x0260
+    BG_GREY       = 0x0270
+
+class Mask(Enum):
+    """Use the bitwise OR of any of these with messages."""
+
+    TYPE_MASK     = 0x7000
+    FG_COLOR_MASK = 0x0107
+    FG_ATTR_MASK  = 0x0088
+    BG_COLOR_MASK = 0x0270
+
+## ----------------------------------------------------------------------------
 ## Instantiation
 
-# def csoundInitialize(flags: int) -> int:
-#     """Initialise Csound library with specific flags. 
+def csoundInitialize(flags: int) -> int:
+    """Initialise Csound library with specific flags. 
 
-#     Called internally by `csound.create()`, so there is generally no need to use it
-#     explicitly unless you need to avoid default initilization that sets
-#     signal handlers and atexit() callbacks.
+    Called internally by `csound.create()`, so there is generally no need to use it
+    explicitly unless you need to avoid default initilization that sets
+    signal handlers and atexit() callbacks.
 
-#     Return value is zero on success, positive if initialisation was
-#     done already, and negative on error.
-#     """
-#     return cs.csoundInitialize(flags)
+    Return value is zero on success, positive if initialisation was
+    done already, and negative on error.
+    """
+    return cs.csoundInitialize(flags)
 
 # see: https://cython.readthedocs.io/en/latest/src/userguide/faq.html#what-is-the-difference-between-pyobject-and-object
-# cdef cs.CSOUND *csoundCreate(void *hostData):
-#     """Creates an instance of Csound.
+cdef cs.CSOUND *csoundCreate(void *hostData):
+    """Creates an instance of Csound.
 
-#     Returns an opaque pointer that
-#     must be passed to most Csound API functions.  The hostData
-#     parameter can be NULL, or it can be a pointer to any sort of
-#     data; this pointer can be accessed from the Csound instance
-#     that is passed to callback routines.
-#     """
-#     return cs.csoundCreate(hostData)
+    Returns an opaque pointer that must be passed to most Csound API functions.
+    The hostData parameter can be NULL, or it can be a pointer to any sort of
+    data; this pointer can be accessed from the Csound instance
+    that is passed to callback routines.
+    """
+    return cs.csoundCreate(hostData)
 
 def set_opcode_dir(s: str):
     """Sets an opcodedir override for csoundCreate()"""
@@ -425,7 +474,7 @@ cdef class Csound:
             cs.csoundDestroy(self.ptr)
             self.ptr = NULL
 
-    def __init__(self, hostData=None):
+    def __init__(self, object hostData = None):
         """Creates an instance of Csound.
        
         Gets an opaque pointer that must be passed to most Csound API
@@ -1219,14 +1268,19 @@ cdef class Csound:
     ## ----------------------------------------------------------------------------
     ## Messages and Text
 
-    # cdef CS_PRINTF2 void csoundMessage(self, const char* format, ...)
-    #     """Displays an informational message."""
+    def message(self, str fmt, *args):
+        """Displays an informational message."""
+        _format = fmt % args
+        cs.csoundMessage(self.ptr, _format.encode())
 
-    # cdef CS_PRINTF3 void csoundMessageS(self, int attr, const char* format, ...)
-    #     """Print message with special attributes (see msg_attr.h for the list of
-    #     available attributes). With attr=0, csoundMessageS() is identical to
-    #     csoundMessage().
-    #     """
+    def message_special(self, int attr, str fmt, *args):
+        """Print message with special attributes (see msg_attr.h for the list of
+        available attributes). With attr=0, csoundMessageS() is identical to
+        csoundMessage().
+        """
+        cdef const char * _msg = NULL
+        _format = fmt % args
+        cs.csoundMessageS(self.ptr, attr, _format.encode())
 
     # cdef void csoundMessageV(self, int attr, const char* format, va_list args)
     
