@@ -1,10 +1,10 @@
 # cycsound
 
-This is an early stage project to develop a cython wrapper of the csound api -- essentially wrapping the `csound.h` api.
+This is an early stage project to develop a cython wrapper of the csound 6.x api -- essentially wrapping the `csound.h` api.
 
 There's a very good and well-maintained ctypes-based wrapper called `ctcsound.py` which is provided by default with csound. Anyone wanting to use python and csound should use that.
 
-Note: development is slowing down to consider upcoming changes in version 7 of the csound api
+Note: As there is another version (7.x) of csound being developed in the [develop branch](https://github.com/csound/csound) of csound, the `dev` branch of this project will track that once it is released.
 
 
 ## Rationale
