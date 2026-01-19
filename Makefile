@@ -4,41 +4,61 @@
 # This Makefile wraps common build commands for convenience.
 # The actual build is handled by scikit-build-core via pyproject.toml
 
-.PHONY: all sync build rebuild test test-cli clean distclean wheel wheel-static sdist help
+.PHONY: all sync build rebuild test test-cli clean distclean wheel wheel-static sdist check publish publish-test help
 
 # Default target
 all: build
 
 # Sync environment (initial setup, installs dependencies + package)
 sync:
-	uv sync
+	@uv sync
 
 # Build/rebuild the extension after code changes
 build:
-	uv sync --reinstall-package cycsound
+	@uv sync --reinstall-package cycsound
 
 # Alias for build
 rebuild: build
 
 # Run tests
 test:
-	uv run pytest tests/ -v
+	@uv run pytest tests/ -v
 
 # Run CLI tests only
 test-cli:
-	uv run pytest tests/test_cli.py -v
+	@uv run pytest tests/test_cli.py -v
 
 # Build wheel (dynamic linking)
 wheel:
-	uv build --wheel
+	@uv build --wheel
 
 # Build wheel with static Csound libraries (standalone, macOS only)
 wheel-static:
-	uv build --wheel -C cmake.define.STATIC=ON
+	@uv build --wheel -C cmake.define.STATIC=ON
 
 # Build source distribution
 sdist:
-	uv build --sdist
+	@uv build --sdist
+
+# Check distribution files with twine
+check:
+	@uv run twine check dist/*
+
+release:
+	@uv build --wheel -C cmake.define.STATIC=ON --python 3.10
+	@uv build --wheel -C cmake.define.STATIC=ON --python 3.11
+	@uv build --wheel -C cmake.define.STATIC=ON --python 3.12
+	@uv build --wheel -C cmake.define.STATIC=ON --python 3.13
+	@uv build --wheel -C cmake.define.STATIC=ON --python 3.14
+	@uv run twine check dist/*
+
+# Publish to PyPI
+publish:
+	@uv run twine upload dist/*
+
+# Publish to TestPyPI
+publish-test:
+	@uv run twine upload --repository testpypi dist/*
 
 # Clean build artifacts
 clean:
@@ -67,6 +87,9 @@ help:
 	@echo "  wheel        - Build wheel distribution (dynamic linking)"
 	@echo "  wheel-static - Build wheel with static Csound (standalone, macOS)"
 	@echo "  sdist        - Build source distribution"
+	@echo "  check        - Check distribution files with twine"
+	@echo "  publish      - Publish to PyPI"
+	@echo "  publish-test - Publish to TestPyPI"
 	@echo "  clean        - Remove build artifacts"
 	@echo "  distclean    - Remove all generated files"
 	@echo "  help         - Show this help message"

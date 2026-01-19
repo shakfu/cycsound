@@ -15,15 +15,19 @@ cycsound is a Cython wrapper for the [Csound](https://csound.com/) audio synthes
 
 ## Installation
 
-### Prerequisites
+```sh
+pip install cycsound
+```
+
+## Building From Source
+
+Prerequisites:
 
 - Python >= 3.9
 - Csound 6.x installed:
   - **macOS**: CsoundLib64.framework in `/Library/Frameworks/`
   - **Linux**: `libcsound64-dev` package
   - **Windows**: Csound6_x64 in `C:/Program Files/`
-
-### From Source
 
 ```bash
 # Clone the repository
