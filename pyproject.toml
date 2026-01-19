@@ -1,0 +1,43 @@
+[project]
+name = "cycsound"
+version = "0.1.0"
+description = "A cython wrapper of csound"
+authors = [
+    { name = "Shakeeb Alireza", email = "shakfu@users.noreply.github.com" }
+]
+readme = "README.md"
+license = "MIT"
+keywords = [
+    "audio",
+    "csound",
+    "cython",
+]
+requires-python = ">=3.9"
+
+[tool.scikit-build]
+wheel.packages = ["src/cycsound"]
+cmake.build-type = "Release"
+wheel.exclude = [
+    "*.pxd",
+    "*.pyx",
+    "*.c",
+    "*.h",
+]
+sdist.exclude = [
+    "build",
+    "dist",
+    ".venv",
+    "*.egg-info",
+]
+
+# For static builds, use: pip install . --config-settings=cmake.define.STATIC=ON
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+cycsound = "cycsound.__main__:main"
+
+[build-system]
+requires = ["scikit-build-core", "cython"]
+build-backend = "scikit_build_core.build"
