@@ -63,18 +63,125 @@ class Mask(Enum):
     FG_ATTR_MASK  = 0x0088
     BG_COLOR_MASK = 0x0270
 
+
+## ----------------------------------------------------------------------------
+## Status and File Type Enums (cpdef for Python accessibility)
+
+cpdef enum Status:
+    """Csound return status codes."""
+    SUCCESS = 0
+    ERROR = -1
+    INITIALIZATION = -2
+    PERFORMANCE = -3
+    MEMORY = -4
+    SIGNAL = -5
+
+cpdef enum FileType:
+    """Csound file type constants."""
+    # This should only be used internally by the original FileOpen()
+    # API call or for temp files written with <CsFileB>
+    UNKNOWN = 0
+
+    UNIFIED_CSD = 1       # Unified Csound document
+    ORCHESTRA = 2         # the primary orc file (may be temporary)
+    SCORE = 3             # the primary sco file (may be temporary)
+                          # or any additional score opened by Cscore
+    ORC_INCLUDE = 4       # a file #included by the orchestra
+    SCO_INCLUDE = 5       # a file #included by the score
+    SCORE_OUT = 6         # used for score.srt score.xtr cscore.out
+    SCOT = 7              # Scot score input format
+    OPTIONS = 8           # for .csoundrc and -@ flag
+    EXTRACT_PARMS = 9     # extraction file specified by -x
+
+    # audio file types that Csound can write (10-19) or read
+    RAW_AUDIO = 10
+    IRCAM = 11
+    AIFF = 12
+    AIFC = 13
+    WAVE = 14
+    AU = 15
+    SD2 = 16
+    W64 = 17
+    WAVEX = 18
+    FLAC = 19
+    CAF = 20
+    WVE = 21
+    OGG = 22
+    MPC2K = 23
+    RF64 = 24
+    AVR = 25
+    HTK = 26
+    MAT4 = 27
+    MAT5 = 28
+    NIST = 29
+    PAF = 30
+    PVF = 31
+    SDS = 32
+    SVX = 33
+    VOC = 34
+    XI = 35
+    MPEG = 36
+    UNKNOWN_AUDIO = 37    # used when opening audio file for reading
+                          # or temp file written with <CsSampleB>
+
+    # miscellaneous music formats
+    SOUNDFONT = 38
+    STD_MIDI = 39         # Standard MIDI file
+    MIDI_SYSEX = 40       # Raw MIDI codes eg. SysEx dump
+
+    # analysis formats
+    HETRO = 41
+    HETROT = 42
+    PVC = 43              # original PVOC format
+    PVCEX = 44            # PVOC-EX format
+    CVANAL = 45
+    LPC = 46
+    ATS = 47
+    LORIS = 48
+    SDIF = 49
+    HRTF = 50
+
+    # Types for plugins and the files they read/write
+    UNUSED = 51
+    LADSPA_PLUGIN = 52
+    SNAPSHOT = 53
+
+    # Special formats for Csound ftables or scanned synthesis matrices with header info
+    FTABLES_TEXT = 54     # for ftsave and ftload
+    FTABLES_BINARY = 55   # for ftsave and ftload
+    XSCANU_MATRIX = 56    # for xscanu opcode
+
+    # These are for raw lists of numbers without header info
+    FLOATS_TEXT = 57      # used by GEN23 GEN28 dumpk readk
+    FLOATS_BINARY = 58    # used by dumpk readk etc.
+    INTEGER_TEXT = 59     # used by dumpk readk etc.
+    INTEGER_BINARY = 60   # used by dumpk readk etc.
+
+    # image file formats
+    IMAGE_PNG = 61
+
+    # For files that don't match any of the above
+    POSTSCRIPT = 62       # EPS format used by graphs
+    SCRIPT_TEXT = 63      # executable script files (eg. Python)
+    OTHER_TEXT = 64
+    OTHER_BINARY = 65
+
+
 ## ----------------------------------------------------------------------------
 ## Instantiation
 
-def csoundInitialize(flags: int) -> int:
-    """Initialise Csound library with specific flags. 
+def initialize(flags: int = 0) -> int:
+    """Initialize Csound library with specific flags.
 
-    Called internally by `csound.create()`, so there is generally no need to use it
-    explicitly unless you need to avoid default initilization that sets
+    Called internally by Csound(), so there is generally no need to use it
+    explicitly unless you need to avoid default initialization that sets
     signal handlers and atexit() callbacks.
 
-    Return value is zero on success, positive if initialisation was
-    done already, and negative on error.
+    Args:
+        flags: Initialization flags (default 0)
+
+    Returns:
+        Zero on success, positive if already initialized, negative on error.
     """
     return cs.csoundInitialize(flags)
 
@@ -476,12 +583,21 @@ cdef class Csound:
 
     def __init__(self, object hostData = None):
         """Creates an instance of Csound.
-       
+
         Gets an opaque pointer that must be passed to most Csound API
         functions.
         """
         self.ptr = cs.csoundCreate(<PyObject*>hostData)
         self.ptr_owner = True
+
+    def __enter__(self):
+        """Enter context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit context manager, ensuring cleanup."""
+        self.cleanup()
+        return False
 
     @staticmethod
     cdef Csound from_ptr(cs.CSOUND* ptr, bint owner=False):
@@ -574,7 +690,7 @@ cdef class Csound:
             result = cs.csoundEvalCode(ptr, cstr)
         return result
 
-    cdef int initialize_cscore(self, stdio.FILE *insco, stdio.FILE *outsco):
+    cdef Status initialize_cscore(self, stdio.FILE *insco, stdio.FILE *outsco):
         """Prepares a Csound instance for cscore processing outside of running
          an orchestra.
 
@@ -583,13 +699,13 @@ cdef class Csound:
 
         This function must be called before using the interface in "cscore.h"
         when you do not wish to compile an orchestra.
-        
+
         Pass in already open input and output FILE* pointers to score files.
-        
-        It returns cs.CSOUND_SUCCESS on success and cs.CSOUND_INITIALIZATION or other
-        error code if it fails.
+
+        Returns:
+            Status.SUCCESS on success, Status.INITIALIZATION or other error code on failure.
         """
-        return cs.csoundInitializeCscore(self.ptr, insco, outsco)
+        return <Status>cs.csoundInitializeCscore(self.ptr, insco, outsco)
 
     def compile_args(self, *args) -> int:
         """Read arguments, parse and compile an orchestra, read, process and
@@ -787,17 +903,39 @@ cdef class Csound:
         with nogil:
             cs.csoundReset(ptr)
 
+    def run(self) -> int:
+        """Perform the entire score from start to finish.
+
+        This is a convenience method that calls start() and then
+        repeatedly calls perform_ksmps() until the score is finished.
+
+        Returns:
+            0 on success, non-zero on error.
+
+        Example:
+            with Csound() as cs:
+                cs.compile_csd("score.csd")
+                cs.run()
+        """
+        cdef int result = self.start()
+        if result != 0:
+            return result
+        while not self.perform_ksmps():
+            pass
+        return 0
+
     ## ----------------------------------------------------------------------------
     ## UDP server
 
-    def udp_server_start(self, int port) -> int:
+    def udp_server_start(self, int port) -> Status:
         """Starts the UDP server on a supplied port number.
 
-        Returns cs.CSOUND_SUCCESS if server has been started successfully,
-        otherwise, cs.CSOUND_ERROR.
+        Returns:
+            Status.SUCCESS if server has been started successfully,
+            Status.ERROR otherwise.
         """
         assert port > 0, "port number must be above 0"
-        return cs.csoundUDPServerStart(self.ptr, port)
+        return <Status>cs.csoundUDPServerStart(self.ptr, port)
 
     def udp_server_status(self) -> int:
         """Returns the port number on which the server is running, or
@@ -805,24 +943,28 @@ cdef class Csound:
         """
         return cs.csoundUDPServerStatus(self.ptr)
 
-    def udp_server_close(self) -> int:
-        """Closes the UDP server, returning cs.CSOUND_SUCCESS if the
-        running server was successfully closed, cs.CSOUND_ERROR otherwise.
-        """
-        return cs.csoundUDPServerClose(self.ptr)
+    def udp_server_close(self) -> Status:
+        """Closes the UDP server.
 
-    def upd_console(self, str addr, int port, int mirror) -> int:
+        Returns:
+            Status.SUCCESS if the running server was successfully closed,
+            Status.ERROR otherwise.
+        """
+        return <Status>cs.csoundUDPServerClose(self.ptr)
+
+    def upd_console(self, str addr, int port, int mirror) -> Status:
         """Turns on the transmission of console messages to UDP on address addr
         port port.
 
         If mirror is one, the messages will continue to be
         sent to the usual destination (see csoundSetMessaggeCallback())
         as well as to UDP.
-        
-        Returns cs.CSOUND_SUCCESS or cs.CSOUND_ERROR if the UDP transmission
-        could not be set up.
+
+        Returns:
+            Status.SUCCESS on success, Status.ERROR if the UDP transmission
+            could not be set up.
         """
-        return cs.csoundUDPConsole(self.ptr, addr.encode(), port, mirror)
+        return <Status>cs.csoundUDPConsole(self.ptr, addr.encode(), port, mirror)
 
     def stop_udp_console(self):
         """Stop transmitting console messages via UDP."""
@@ -878,11 +1020,15 @@ cdef class Csound:
         """Sets host data."""
         cs.csoundSetHostData(self.ptr, hostData)
 
-    def set_option(self, str option) -> int:
-        """Set a single csound option (flag). Returns cs.CSOUND_SUCCESS on success.
-        NB: blank spaces are not allowed
+    def set_option(self, str option) -> Status:
+        """Set a single csound option (flag).
+
+        NB: blank spaces are not allowed.
+
+        Returns:
+            Status.SUCCESS on success.
         """
-        return cs.csoundSetOption(self.ptr, option.encode())
+        return <Status>cs.csoundSetOption(self.ptr, option.encode())
 
     def set_params(self, Params params):
         """Configure Csound with a given set of parameters defined in
@@ -996,7 +1142,7 @@ cdef class Csound:
         The callback is made after the file is successfully opened.
         The following information is passed to the callback:
             char*  pathname of the file; either full or relative to current dir
-            int    a file type code from the enumeration cs.CSOUND_FILETYPES
+            int    a file type code from the enumeration FileType
             int    1 if Csound is writing the file, 0 if reading
             int    1 if a temporary file that Csound will delete; 0 if not
 
@@ -1012,18 +1158,20 @@ cdef class Csound:
         """Sets the current RT audio module"""
         cs.csoundSetRTAudioModule(self.ptr, module.encode())
 
-    cdef int get_module(self, int number, char **name, char **type):
-        """retrieves a module name and type ("audio" or "midi") given a
-        number Modules are added to list as csound loads them returns
-        cs.CSOUND_SUCCESS on success and cs.CSOUND_ERROR if module number
-        was not found
+    cdef Status get_module(self, int number, char **name, char **type):
+        """Retrieves a module name and type ("audio" or "midi") given a number.
+
+        Modules are added to list as csound loads them.
 
             char *name, *type;
             int n = 0;
             while(!csoundGetModule(csound, n++, &name, &type))
                 printf("Module %d:  %s (%s) \n", n, name, type);
+
+        Returns:
+            Status.SUCCESS on success, Status.ERROR if module number was not found.
         """
-        return cs.csoundGetModule(self.ptr, number, name, type)
+        return <Status>cs.csoundGetModule(self.ptr, number, name, type)
 
     def get_input_buffersize(self) -> int:
         """Returns the number of samples in Csound's input buffer."""
@@ -1484,18 +1632,19 @@ cdef class Csound:
         cs.csoundDeleteChannelList(self.ptr, lst)
 
 
-    cdef int set_control_channel_hints(self, str name, cs.controlChannelHints_t hints):
+    cdef Status set_control_channel_hints(self, str name, cs.controlChannelHints_t hints):
         """Set parameters hints for a control channel.
 
-        These hints have no internal
-        function but can be used by front ends to construct GUIs or to constrain
-        values. See the controlChannelHints_t structure for details.
-        Returns zero on success, or a non-zero error code on failure:
-          cs.CSOUND_ERROR:  the channel does not exist, is not a control channel,
-                         or the specified parameters are invalid
-          cs.CSOUND_MEMORY: could not allocate memory
+        These hints have no internal function but can be used by front ends
+        to construct GUIs or to constrain values. See the controlChannelHints_t
+        structure for details.
+
+        Returns:
+            Status.SUCCESS on success, Status.ERROR if the channel does not exist,
+            is not a control channel, or the specified parameters are invalid,
+            Status.MEMORY if memory could not be allocated.
         """
-        return cs.csoundSetControlChannelHints(self.ptr, name.encode(), hints)
+        return <Status>cs.csoundSetControlChannelHints(self.ptr, name.encode(), hints)
 
     cdef int get_control_channel_hints(self, str name, cs.controlChannelHints_t *hints):
         """Returns special parameters (assuming there are any) of a control channel,
@@ -1579,21 +1728,25 @@ cdef class Csound:
     #     """
     #     cs.csoundSetOutputChannelCallback(self.ptr, outputChannelCallback)
 
-    cdef int set_pvs_channel(self, const cs.PVSDATEXT *fin, str name):
+    cdef Status set_pvs_channel(self, const cs.PVSDATEXT *fin, str name):
         """Sends a PVSDATEX fin to the pvsin opcode (f-rate) for channel 'name'.
-        Returns zero on success, cs.CSOUND_ERROR if the index is invalid or
-        fsig framesizes are incompatible.
-        cs.CSOUND_MEMORY if there is not enough memory to extend the bus.
-        """
-        return cs.csoundSetPvsChannel(self.ptr, fin, name.encode())
 
-    cdef int get_pvs_channel(self, cs.PVSDATEXT *fout, str name):
-        """Receives a PVSDAT fout from the pvsout opcode (f-rate) at channel 'name'
-        Returns zero on success, cs.CSOUND_ERROR if the index is invalid or
-        if fsig framesizes are incompatible.
-        cs.CSOUND_MEMORY if there is not enough memory to extend the bus
+        Returns:
+            Status.SUCCESS on success, Status.ERROR if the index is invalid or
+            fsig framesizes are incompatible, Status.MEMORY if there is not
+            enough memory to extend the bus.
         """
-        return cs.csoundGetPvsChannel(self.ptr, fout, name.encode())
+        return <Status>cs.csoundSetPvsChannel(self.ptr, fin, name.encode())
+
+    cdef Status get_pvs_channel(self, cs.PVSDATEXT *fout, str name):
+        """Receives a PVSDAT fout from the pvsout opcode (f-rate) at channel 'name'.
+
+        Returns:
+            Status.SUCCESS on success, Status.ERROR if the index is invalid or
+            if fsig framesizes are incompatible, Status.MEMORY if there is not
+            enough memory to extend the bus.
+        """
+        return <Status>cs.csoundGetPvsChannel(self.ptr, fout, name.encode())
 
     cdef int score_event(self, char type, const cs.MYFLT *pFields, long numFields):
         """Send a new score event. 'type' is the score event type ('a', 'i', 'q',
@@ -1663,10 +1816,11 @@ cdef class Csound:
         """
         cs.csoundKeyPress(self.ptr, c)
 
-    cdef int register_keyboard_callback(self, int (*func)(void *userData, void *p, unsigned int type) noexcept, void *userData, unsigned int type):
+    cdef Status register_keyboard_callback(self, int (*func)(void *userData, void *p, unsigned int type) noexcept, void *userData, unsigned int type):
         """Registers general purpose callback functions that will be called to query
         keyboard events. These callbacks are called on every control period by
         the sensekey opcode.
+
         The callback is preserved on csound.reset(), and multiple
         callbacks may be set and will be called in reverse order of
         registration. If the same function is set again, it is only moved
@@ -1674,9 +1828,6 @@ cdef class Csound:
         user data and type mask parameters are updated. 'typeMask' can be the
         bitwise OR of callback types for which the function should be called,
         or zero for all types.
-        Returns zero on success, cs.CSOUND_ERROR if the specified function
-        pointer or type mask is invalid, and cs.CSOUND_MEMORY if there is not
-        enough memory.
 
         The callback function takes the following arguments:
           void *userData
@@ -1700,8 +1851,13 @@ cdef class Csound:
         The return value should be zero on success, negative on error, and
         positive if the callback was ignored (for example because the type is
         not known).
+
+        Returns:
+            Status.SUCCESS on success, Status.ERROR if the specified function
+            pointer or type mask is invalid, Status.MEMORY if there is not
+            enough memory.
         """
-        return cs.csoundRegisterKeyboardCallback(self.ptr, func, userData, type)
+        return <Status>cs.csoundRegisterKeyboardCallback(self.ptr, func, userData, type)
 
     cdef remove_keyboard_callback(self, int (*func)(void *, void *, unsigned int) noexcept):
         """Removes a callback previously set with csoundRegisterKeyboardCallback()."""
@@ -1865,16 +2021,17 @@ cdef class Csound:
         cdef const char *value = cs.csoundGetEnv(self.ptr, name.encode())
         return value.decode()
 
-    cdef int create_global_variable(self, const char *name, size_t nbytes):
+    cdef Status create_global_variable(self, const char *name, size_t nbytes):
         """Allocate nbytes bytes of memory that can be accessed later by calling
         csoundQueryGlobalVariable() with the specified name; the space is
         cleared to zero.
 
-        Returns cs.CSOUND_SUCCESS on success, cs.CSOUND_ERROR in case of invalid
-        parameters (zero nbytes, invalid or already used name), or
-        cs.CSOUND_MEMORY if there is not enough memory.
+        Returns:
+            Status.SUCCESS on success, Status.ERROR in case of invalid
+            parameters (zero nbytes, invalid or already used name), or
+            Status.MEMORY if there is not enough memory.
         """
-        return cs.csoundCreateGlobalVariable(self.ptr, name, nbytes)
+        return <Status>cs.csoundCreateGlobalVariable(self.ptr, name, nbytes)
 
     cdef void *query_global_variable(self, const char *name):
         """
@@ -1892,12 +2049,13 @@ cdef class Csound:
         """
         return cs.csoundQueryGlobalVariableNoCheck(self.ptr, name)
 
-    cdef int destroy_global_variable(self, const char *name):
+    cdef Status destroy_global_variable(self, const char *name):
         """Free memory allocated for "name" and remove "name" from the database.
-        Return value is cs.CSOUND_SUCCESS on success, or cs.CSOUND_ERROR if the name is
-        not defined.
+
+        Returns:
+            Status.SUCCESS on success, Status.ERROR if the name is not defined.
         """
-        return cs.csoundDestroyGlobalVariable(self.ptr, name)
+        return <Status>cs.csoundDestroyGlobalVariable(self.ptr, name)
 
     cdef int run_utility(self, const char *name, int argc, char **argv):
         """Run utility with the specified name and command line arguments.
@@ -2210,11 +2368,13 @@ cdef spin_lock(cs.spin_lock_t *spinlock):
     with nogil:
         cs.csoundSpinLock(spinlock)
 
-cdef int spin_try_lock(cs.spin_lock_t *spinlock):
-    """Tries the lock, returns cs.CSOUND_SUCCESS if lock could be acquired,
-        cs.CSOUND_ERROR, otherwise.
+cdef Status spin_try_lock(cs.spin_lock_t *spinlock):
+    """Tries the lock.
+
+    Returns:
+        Status.SUCCESS if lock could be acquired, Status.ERROR otherwise.
     """
-    return cs.csoundSpinTryLock(spinlock)
+    return <Status>cs.csoundSpinTryLock(spinlock)
 
 cdef spin_un_lock(cs.spin_lock_t *spinlock):
     """Unlocks the spinlock"""

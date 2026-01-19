@@ -2,27 +2,32 @@
 
 from cycsound._core import (
     # Module-level functions
-    csoundInitialize,
+    initialize,
     set_opcode_dir,
     get_version,
     get_api_version,
     get_size_of_myflt,
-    # Enums
+    # Enums (Python Enum classes)
     Msg,
     Color,
     Mask,
+    # Enums (cpdef enums from Csound API)
+    Status,
+    FileType,
     # Classes
     Csound,
 )
 
 __all__ = [
-    "csoundInitialize",
-    "set_opcode_dir", 
+    "initialize",
+    "set_opcode_dir",
     "get_version",
     "get_api_version",
     "get_size_of_myflt",
     "Msg",
     "Color",
     "Mask",
+    "Status",
+    "FileType",
     "Csound",
 ]

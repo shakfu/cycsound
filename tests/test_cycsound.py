@@ -69,3 +69,73 @@ def test_color_enum():
     """Test Color enum values exist."""
     assert cycsound.Color.FG_RED.value == 0x0101
     assert cycsound.Color.FG_GREEN.value == 0x0102
+
+
+def test_context_manager():
+    """Test Csound context manager support."""
+    with cycsound.Csound() as cs:
+        cs.set_option("-n")
+        cs.set_option("-d")
+        result = cs.compile_orc("""
+sr = 44100
+ksmps = 32
+nchnls = 2
+0dbfs = 1
+
+instr 1
+    asig oscil 0.5, 440
+    outs asig, asig
+endin
+""")
+        assert result == 0
+        cs.read_score("i1 0 0.1")
+        cs.start()
+    # cleanup() should have been called automatically
+
+
+def test_run_method():
+    """Test Csound run() convenience method."""
+    with cycsound.Csound() as cs:
+        cs.set_option("-n")
+        cs.set_option("-d")
+        cs.compile_orc("""
+sr = 44100
+ksmps = 32
+nchnls = 2
+0dbfs = 1
+
+instr 1
+    print p1
+endin
+""")
+        cs.read_score("i1 0 0.01")
+        result = cs.run()
+        assert result == 0
+
+
+def test_initialize():
+    """Test initialize() function."""
+    # Should return 0 on success, positive if already initialized
+    result = cycsound.initialize()
+    assert result >= 0
+
+
+def test_status_enum():
+    """Test Status enum values."""
+    assert cycsound.Status.SUCCESS == 0
+    assert cycsound.Status.ERROR == -1
+    assert cycsound.Status.INITIALIZATION == -2
+    assert cycsound.Status.PERFORMANCE == -3
+    assert cycsound.Status.MEMORY == -4
+    assert cycsound.Status.SIGNAL == -5
+
+
+def test_filetype_enum():
+    """Test FileType enum values."""
+    assert cycsound.FileType.UNKNOWN == 0
+    assert cycsound.FileType.UNIFIED_CSD == 1
+    assert cycsound.FileType.WAVE == 14
+    assert cycsound.FileType.FLAC == 19
+    assert cycsound.FileType.OGG == 22
+    assert cycsound.FileType.STD_MIDI == 39
+    assert cycsound.FileType.OTHER_BINARY == 65

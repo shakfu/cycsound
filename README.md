@@ -8,10 +8,12 @@ cycsound is a Cython wrapper for the [Csound](https://csound.com/) audio synthes
 
 ## Features
 
-- **91% API coverage** of the Csound C API (161/177 functions)
+- **98% API coverage** of the Csound C API (216/219 functions)
+- **Context manager support** for automatic resource cleanup
 - **GIL release** for all blocking operations (enables true multi-threading)
 - **Static linking support** on macOS (standalone wheels without Csound installation)
 - **Platform support**: macOS, Linux, Windows
+- **CLI** for common operations (play, render, check, info, eval)
 
 ## Installation
 
@@ -99,18 +101,11 @@ cycsound play --help
 ```python
 import cycsound
 
-# Get Csound version
-print(f"Csound version: {cycsound.get_version()}")
-
-# Create a Csound instance
-cs = cycsound.Csound()
-
-# Set options
-cs.set_option("-odac")  # Real-time audio output
-cs.set_option("-d")     # Suppress displays
-
-# Compile orchestra code
-cs.compile_orc("""
+# Using context manager (recommended)
+with cycsound.Csound() as cs:
+    cs.set_option("-odac")  # Real-time audio output
+    cs.set_option("-d")     # Suppress displays
+    cs.compile_orc("""
 sr = 44100
 ksmps = 32
 nchnls = 2
@@ -121,15 +116,17 @@ instr 1
     outs asig, asig
 endin
 """)
+    cs.read_score("i1 0 2")
+    cs.run()  # Performs entire score
+# cleanup() called automatically on exit
 
-# Read score
-cs.read_score("i1 0 2")
-
-# Start and perform
-cs.start()
-while not cs.perform_ksmps():
-    pass
-cs.cleanup()
+# Or with manual control
+with cycsound.Csound() as cs:
+    cs.compile_csd("myscore.csd")
+    cs.start()
+    while not cs.perform_ksmps():
+        # Process each k-cycle
+        pass
 ```
 
 ## API Reference
@@ -141,7 +138,7 @@ cs.cleanup()
 | `get_version()` | Returns Csound version (e.g., 6180 for 6.18.0) |
 | `get_api_version()` | Returns API version |
 | `get_size_of_myflt()` | Returns size of MYFLT type (4 or 8) |
-| `csoundInitialize(flags)` | Initialize Csound library |
+| `initialize(flags=0)` | Initialize Csound library (rarely needed) |
 | `set_opcode_dir(path)` | Set opcode directory override |
 
 ### Csound Class
@@ -149,7 +146,10 @@ cs.cleanup()
 Core methods for audio synthesis:
 
 ```python
-cs = cycsound.Csound()
+# Context manager support
+with cycsound.Csound() as cs:
+    # ... use cs ...
+# cleanup() called automatically
 
 # Compilation
 cs.compile_orc(orc_string)      # Compile orchestra code
@@ -158,6 +158,7 @@ cs.compile_csd_text(csd_string) # Compile CSD from string
 cs.read_score(score_string)     # Read score events
 
 # Performance
+cs.run()             # Perform entire score (convenience method)
 cs.start()           # Prepare for performance
 cs.perform()         # Perform entire score (blocks)
 cs.perform_ksmps()   # Perform one control period
@@ -181,10 +182,28 @@ cs.get_string_channel(name)
 ### Enums
 
 ```python
+# Status codes (return values from Csound operations)
+cycsound.Status.SUCCESS        # 0 - Operation succeeded
+cycsound.Status.ERROR          # -1 - General error
+cycsound.Status.INITIALIZATION # -2 - Initialization error
+cycsound.Status.PERFORMANCE    # -3 - Performance error
+cycsound.Status.MEMORY         # -4 - Memory allocation error
+cycsound.Status.SIGNAL         # -5 - Signal received
+
+# File types
+cycsound.FileType.WAVE         # WAV audio
+cycsound.FileType.FLAC         # FLAC audio
+cycsound.FileType.OGG          # OGG Vorbis audio
+cycsound.FileType.UNIFIED_CSD  # Csound CSD file
+cycsound.FileType.STD_MIDI     # Standard MIDI file
+# ... and 60+ more file type constants
+
+# Message types
 cycsound.Msg.DEFAULT   # Standard message
 cycsound.Msg.ERROR     # Error message
 cycsound.Msg.WARNING   # Warning message
 
+# Message colors
 cycsound.Color.FG_RED  # Foreground colors
 cycsound.Color.FG_GREEN
 cycsound.Color.FG_BOLD # Text attributes
@@ -215,6 +234,10 @@ make test-cli      # CLI tests only
 | `make test` | Run test suite |
 | `make wheel` | Build wheel (dynamic linking) |
 | `make wheel-static` | Build standalone wheel (macOS) |
+| `make release` | Build static wheels for all Python versions |
+| `make check` | Check distribution with twine |
+| `make publish` | Publish to PyPI |
+| `make publish-test` | Publish to TestPyPI |
 | `make clean` | Remove build artifacts |
 | `make help` | Show all targets |
 
@@ -241,13 +264,14 @@ For more details, see this [comparison of wrapping approaches](https://stackover
 
 - [x] Wrap enough to play arbitrary CSD files
 - [x] Build static variant as wheel (macOS only)
-- [x] 91% coverage of csound.h API
+- [x] 98% coverage of csound.h API (216/219 functions)
 - [x] GIL release for all blocking operations
 - [x] scikit-build-core based build system
-- [x] Test suite (31 tests: core API, CLI, channels, threading)
-- [ ] Complete wrapping of csound.h (remaining: va_list callbacks)
+- [x] Context manager support
+- [x] Test suite (36 tests: core API, CLI, channels, threading, enums)
+- [x] CI/CD with cibuildwheel (GitHub Actions)
+- [ ] Complete wrapping of csound.h (remaining: 3 va_list callbacks)
 - [ ] Include plugin support in wheel
-- [ ] Async/non-blocking performance helpers
 - [ ] Feature parity with ctcsound.py
 
 ## Related Projects
