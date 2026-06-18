@@ -1,67 +1,76 @@
 # cycsound
 
-Cython bindings for the Csound 6.x API.
+Cython bindings for the Csound 7 API.
 
 ## Overview
 
-cycsound is a Cython wrapper for the [Csound](https://csound.com/) audio synthesis library, providing Python bindings for the `csound.h` C API. It offers an alternative to the default ctypes-based `ctcsound.py` wrapper included with Csound.
+cycsound is a Cython wrapper for the [Csound](https://csound.com/) audio
+synthesis library, providing Python bindings for the Csound 7 `csound.h` C API.
+It offers an alternative to the default ctypes-based `ctcsound.py` wrapper.
+
+> **Note:** This branch targets **Csound 7** (currently in beta). Csound 7
+> reworked the host C API substantially relative to Csound 6: `csoundPerform`,
+> `csoundStop`, `csoundCleanup`, `csoundReadScore`, the `csoundScoreEvent*`
+> family, and the writable `CSOUND_PARAMS` model were all removed or replaced.
+> The Python API here mirrors the Csound 7 surface directly. See the
+> [CHANGELOG](CHANGELOG.md) for the full migration notes.
 
 ## Features
 
-- **98% API coverage** of the Csound C API (216/219 functions)
-- **Context manager support** for automatic resource cleanup
-- **GIL release** for all blocking operations (enables true multi-threading)
-- **Static linking support** on macOS (standalone wheels without Csound installation)
-- **Platform support**: macOS, Linux, Windows
+- **Csound 7 host API** coverage for the common host operations (compile,
+  perform, events, channels, tables, score, messages, UDP server)
+- **Context manager support** (calls `reset()` on exit)
+- **GIL release** for the blocking operations (compile/start/perform/reset)
 - **CLI** for common operations (play, render, check, info, eval)
-
-## Installation
-
-```sh
-pip install cycsound
-```
+- **macOS** support via a repo-local (vendored) Csound 7 framework
 
 ## Building From Source
 
 Prerequisites:
 
-- Python >= 3.9
-- Csound 6.x installed:
-  - **macOS**: CsoundLib64.framework in `/Library/Frameworks/`
-  - **Linux**: `libcsound64-dev` package
-  - **Windows**: Csound6_x64 in `C:/Program Files/`
+- Python >= 3.10
+- macOS (Apple Silicon or Intel)
+- `curl` (preinstalled on macOS) to download the beta framework
+
+The Csound 7 macOS release ships as a `.pkg` whose framework has an absolute
+install name. The vendoring step downloads the public release asset over plain
+HTTPS (no GitHub account needed), extracts the `CsoundLib64.framework` into a
+repo-local `vendor/` directory, and repoints its install id so the built
+extension can find it at runtime -- without touching `/Library/Frameworks`
+(where a Csound 6 install can remain untouched).
+
+The framework is fetched automatically when missing. The `make` targets
+(`sync`, `build`, `test`) carry an order-only prerequisite that runs the
+vendoring script if `vendor/CsoundLib64.framework` is absent, and CMake runs it
+during configure as well (so `pip install .` / `uv build`, which bypass `make`,
+are covered too). The usual flow is just:
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/cycsound.git
+git clone https://github.com/shakfu/cycsound.git
 cd cycsound
 
-# Install in development mode
-make sync
-
-# Or install directly
-pip install .
+make sync     # initial setup
+make build    # auto-vendors the Csound 7 framework on first build
 ```
 
-### Building Wheels
+To vendor manually (or pin a different beta tag), run the script directly:
 
 ```bash
-# Dynamic linking (requires Csound at runtime)
-make wheel
-
-# Static linking - standalone wheel (macOS only)
-make wheel-static
+scripts/vendor_csound7.sh                 # default tag
+scripts/vendor_csound7.sh 7.0.0-beta.16   # explicit tag
 ```
+
+> Linux and Windows builds still reference a system Csound install in
+> `CMakeLists.txt` and have not yet been updated for the Csound 7 vendoring
+> flow.
 
 ## Command-Line Interface
 
-cycsound includes a CLI for common Csound operations:
-
 ```bash
-# Play a CSD file
+# Play a CSD file in real-time
 cycsound play myscore.csd
 
-# Render to audio file
+# Render to an audio file
 cycsound render myscore.csd                    # Creates myscore.wav
 cycsound render -o output.wav myscore.csd      # Specify output file
 cycsound render -f flac -r 48000 myscore.csd   # FLAC format, 48kHz
@@ -71,40 +80,21 @@ cycsound check myscore.csd
 
 # Show Csound version info
 cycsound info
-cycsound info -v    # Verbose output
+cycsound info -v
 
-# Get help
-cycsound --help
-cycsound play --help
+# Evaluate orchestra code
+cycsound eval "print 1 + 1"
 ```
-
-### CLI Commands
-
-| Command | Description |
-|---------|-------------|
-| `play <file>` | Play CSD file in real-time |
-| `render <file>` | Render CSD to audio file |
-| `check <file>` | Validate CSD syntax |
-| `info` | Show Csound version |
-| `eval <code>` | Evaluate orchestra code |
-
-### Common Options
-
-| Option | Description |
-|--------|-------------|
-| `-q, --quiet` | Suppress output |
-| `-o, --output` | Output file/device |
-| `-h, --help` | Show help |
 
 ## Quick Start
 
 ```python
 import cycsound
 
-# Using context manager (recommended)
+# Using the context manager (reset() is called automatically on exit)
 with cycsound.Csound() as cs:
-    cs.set_option("-odac")  # Real-time audio output
-    cs.set_option("-d")     # Suppress displays
+    cs.set_option("-odac")  # real-time audio output
+    cs.set_option("-d")     # suppress displays
     cs.compile_orc("""
 sr = 44100
 ksmps = 32
@@ -112,167 +102,123 @@ nchnls = 2
 0dbfs = 1
 
 instr 1
-    asig oscil 0.5, 440
+    asig oscili 0.5, 440
     outs asig, asig
 endin
 """)
-    cs.read_score("i1 0 2")
-    cs.run()  # Performs entire score
-# cleanup() called automatically on exit
+    cs.event_string("i1 0 2")  # add a score event (replaces read_score)
+    cs.run()                   # start() + perform to the end of the score
 
-# Or with manual control
+# Manual performance loop
 with cycsound.Csound() as cs:
     cs.compile_csd("myscore.csd")
     cs.start()
     while not cs.perform_ksmps():
-        # Process each k-cycle
-        pass
+        pass  # process each k-cycle
+```
+
+### Plugin opcodes / realtime modules
+
+Built-in opcodes work out of the box. The vendored framework's plugin opcodes
+live in `vendor/CsoundLib64.framework/Resources/Opcodes64`. To load them (for
+realtime audio/MIDI modules such as `rtauhal`/`portaudio`, etc.), point the
+instance at that directory:
+
+```python
+cs = cycsound.Csound(opcodedir="vendor/CsoundLib64.framework/Resources/Opcodes64")
 ```
 
 ## API Reference
 
-### Module-level Functions
+### Module-level functions
 
 | Function | Description |
 |----------|-------------|
-| `get_version()` | Returns Csound version (e.g., 6180 for 6.18.0) |
-| `get_api_version()` | Returns API version |
-| `get_size_of_myflt()` | Returns size of MYFLT type (4 or 8) |
-| `initialize(flags=0)` | Initialize Csound library (rarely needed) |
-| `set_opcode_dir(path)` | Set opcode directory override |
+| `get_version()` | Csound version times 1000 (7.00.0 -> 7000) |
+| `get_size_of_myflt()` | Size of MYFLT in bytes (4 or 8) |
+| `initialize(flags=0)` | Initialize the library (rarely needed) |
 
-### Csound Class
-
-Core methods for audio synthesis:
+### Csound class
 
 ```python
-# Context manager support
-with cycsound.Csound() as cs:
-    # ... use cs ...
-# cleanup() called automatically
+cs = cycsound.Csound(host_data=None, opcodedir=None)
 
 # Compilation
-cs.compile_orc(orc_string)      # Compile orchestra code
-cs.compile_csd(filename)        # Compile CSD file
-cs.compile_csd_text(csd_string) # Compile CSD from string
-cs.read_score(score_string)     # Read score events
+cs.compile_orc(orc, async_=False)       # compile orchestra code
+cs.compile_csd(filename)                # compile a CSD file
+cs.compile_csd_text(csd_string)         # compile CSD code from a string
+cs.compile(*args)                       # csoundCompile with argv
+cs.eval_code(code)                      # evaluate global i-time code -> float
+cs.parse_orc(orc) / cs.compile_tree(t)  # parse to a Tree, then compile
 
 # Performance
-cs.run()             # Perform entire score (convenience method)
-cs.start()           # Prepare for performance
-cs.perform()         # Perform entire score (blocks)
-cs.perform_ksmps()   # Perform one control period
-cs.perform_buffer()  # Perform one buffer
-cs.stop()            # Stop performance
-cs.cleanup()         # Close audio/MIDI devices
-cs.reset()           # Reset for new performance
+cs.start()                              # prepare for performance
+cs.perform_ksmps()                      # perform one control period
+cs.run()                                # start() + loop perform_ksmps()
+cs.reset()                              # reset for a new performance
 
-# Configuration
-cs.set_option(option)           # Set command-line option
-cs.get_sr() / cs.get_kr()       # Get sample/control rate
-cs.get_ksmps() / cs.get_nchnls() # Get ksmps/channels
+# Events and score (replaces read_score / score_event)
+cs.event_string("i1 0 1")               # score/realtime events from a string
+cs.event(cycsound.EventType.INSTR, [1, 0, 1])  # event from p-fields
+cs.get_instr_number("Bass")             # number for a named instrument
+
+# Attributes
+cs.get_sr() / cs.get_kr() / cs.get_ksmps() / cs.get_kcounter()
+cs.get_nchnls() / cs.get_nchnls_input() / cs.get_channels(is_input=0)
+cs.get_0dBFS() / cs.get_A4() / cs.err_cnt()
+cs.set_option(option) / cs.get_params()  # get_params() is read-only
 
 # Channels
-cs.set_control_channel(name, value)
-cs.get_control_channel(name)
-cs.set_string_channel(name, value)
-cs.get_string_channel(name)
+cs.set_control_channel(name, value) / cs.get_control_channel(name)
+cs.set_string_channel(name, value) / cs.get_string_channel(name)
+cs.list_channels() / cs.lock_channel(name) / cs.unlock_channel(name)
+
+# Tables
+cs.table_length(n) / cs.get_table(n) / cs.set_table(n, values)
 ```
 
 ### Enums
 
 ```python
-# Status codes (return values from Csound operations)
-cycsound.Status.SUCCESS        # 0 - Operation succeeded
-cycsound.Status.ERROR          # -1 - General error
-cycsound.Status.INITIALIZATION # -2 - Initialization error
-cycsound.Status.PERFORMANCE    # -3 - Performance error
-cycsound.Status.MEMORY         # -4 - Memory allocation error
-cycsound.Status.SIGNAL         # -5 - Signal received
+# Return status codes
+cycsound.Status.SUCCESS        # 0
+cycsound.Status.ERROR          # -1
+# ... INITIALIZATION, PERFORMANCE, MEMORY, SIGNAL
 
-# File types
-cycsound.FileType.WAVE         # WAV audio
-cycsound.FileType.FLAC         # FLAC audio
-cycsound.FileType.OGG          # OGG Vorbis audio
-cycsound.FileType.UNIFIED_CSD  # Csound CSD file
-cycsound.FileType.STD_MIDI     # Standard MIDI file
-# ... and 60+ more file type constants
+# csoundEvent() event types
+cycsound.EventType.INSTR       # 0 (i-event)
+cycsound.EventType.TABLE       # 1 (f-event)
+cycsound.EventType.END         # 2 (e-event)
+cycsound.EventType.ADVANCE     # 3
 
-# Message types
-cycsound.Msg.DEFAULT   # Standard message
-cycsound.Msg.ERROR     # Error message
-cycsound.Msg.WARNING   # Warning message
+# Channel kinds / direction flags (bus interface)
+cycsound.ChannelType.CONTROL   # 1
+cycsound.ChannelType.AUDIO     # 2
+cycsound.ChannelType.STRING    # 3
+cycsound.ChannelType.INPUT     # 16
+cycsound.ChannelType.OUTPUT    # 32
 
-# Message colors
-cycsound.Color.FG_RED  # Foreground colors
-cycsound.Color.FG_GREEN
-cycsound.Color.FG_BOLD # Text attributes
+# Message types / colors (for message_special)
+cycsound.Msg.DEFAULT / cycsound.Msg.ERROR / cycsound.Msg.WARNING
+cycsound.Color.FG_RED / cycsound.Color.FG_GREEN / cycsound.Color.FG_BOLD
 ```
 
 ## Development
 
-### Setup
-
 ```bash
-# Initial setup
-make sync
-
-# Rebuild after code changes
-make build
-
-# Run tests
-make test          # All tests
-make test-cli      # CLI tests only
-```
-
-### Available Make Targets
-
-| Target | Description |
-|--------|-------------|
-| `make` / `make build` | Build/rebuild the extension |
-| `make sync` | Initial environment setup |
-| `make test` | Run test suite |
-| `make wheel` | Build wheel (dynamic linking) |
-| `make wheel-static` | Build standalone wheel (macOS) |
-| `make release` | Build static wheels for all Python versions |
-| `make check` | Check distribution with twine |
-| `make publish` | Publish to PyPI |
-| `make publish-test` | Publish to TestPyPI |
-| `make clean` | Remove build artifacts |
-| `make help` | Show all targets |
-
-### Static Build Requirements (macOS)
-
-For `make wheel-static`, install dependencies via Homebrew:
-
-```bash
-brew install libsndfile flac opus libvorbis libogg mpg123 lame
+make sync                   # initial environment setup (auto-vendors framework)
+make build                  # rebuild after source changes
+make test                   # run the test suite
+make test-cli               # CLI tests only
+make vendor                 # (re)fetch the Csound 7 framework explicitly
 ```
 
 ## Rationale
 
-This project provides an alternative to the default ctypes-based wrapper. [Cython](https://cython.readthedocs.io/) offers several advantages over ctypes:
-
-- Better performance for tight loops
-- Direct C-level access to Csound internals
-- Ability to release the GIL for true multi-threading
-- Static linking for self-contained distribution
-
-For more details, see this [comparison of wrapping approaches](https://stackoverflow.com/questions/1942298/wrapping-a-c-library-in-python-c-cython-or-ctypes).
-
-## Status
-
-- [x] Wrap enough to play arbitrary CSD files
-- [x] Build static variant as wheel (macOS only)
-- [x] 98% coverage of csound.h API (216/219 functions)
-- [x] GIL release for all blocking operations
-- [x] scikit-build-core based build system
-- [x] Context manager support
-- [x] Test suite (36 tests: core API, CLI, channels, threading, enums)
-- [x] CI/CD with cibuildwheel (GitHub Actions)
-- [ ] Complete wrapping of csound.h (remaining: 3 va_list callbacks)
-- [ ] Include plugin support in wheel
-- [ ] Feature parity with ctcsound.py
+This project provides an alternative to the default ctypes-based wrapper.
+[Cython](https://cython.readthedocs.io/) offers better performance for tight
+loops, direct C-level access, and the ability to release the GIL for true
+multi-threading.
 
 ## Related Projects
 

@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0]
+
+Port from Csound 6 to **Csound 7** (beta). Csound 7 reworked the host C API, so
+this is a breaking change to both the build and the Python API.
+
+### Build
+
+- Target the Csound 7 `CsoundLib64.framework` on macOS, vendored into a
+  repo-local `vendor/` directory by `scripts/vendor_csound7.sh` (downloads the
+  beta `.pkg`, extracts the framework, repoints its install id, and re-signs).
+  `/Library/Frameworks` is no longer used, so a Csound 6 install can coexist.
+- The framework is downloaded over plain HTTPS with `curl` (with a `wget`
+  fallback) from the public GitHub release asset -- no GitHub account or `gh`
+  CLI required. A tag can be passed to the script, e.g.
+  `scripts/vendor_csound7.sh 7.0.0-beta.16`.
+- The framework is fetched automatically when missing: the `build`/`test`/`sync`
+  Makefile targets carry an order-only prerequisite on
+  `vendor/CsoundLib64.framework`, and `CMakeLists.txt` also runs the vendoring
+  script during configure (covering `pip install .` / `uv build`, which do not
+  go through `make`).
+- `CMakeLists.txt` points at the vendored framework; macOS static linking is
+  disabled (the framework ships dynamic libraries only).
+- `include/` headers refreshed to the Csound 7 set.
+- `make test` now invokes `python -m pytest`.
+
+### Changed / Added (Python API mirrors Csound 7)
+
+- `Csound(host_data=None, opcodedir=None)` - `csoundCreate` takes an opcode
+  directory override.
+- `compile_orc(orc, async_=False)` - merged async flag (no `compile_orc_async`).
+- `compile_csd(file)` / `compile_csd_text(text)` - both call `csoundCompileCSD`.
+- `event(type, params, async_=False)` and `event_string(message, async_=False)`
+  replace `read_score`, `input_message`, and the `score_event*` family.
+- `get_instr_number(name)`, `get_kcounter()`, `err_cnt()`, `lock_channel()` /
+  `unlock_channel()`, `set_host_audio_io()` / `set_host_midi_io()`,
+  `get_channels(is_input)` (plus `get_nchnls()`/`get_nchnls_input()` helpers).
+- `get_params()` returns a **read-only** `Params` view of the `OPARMS` struct;
+  `set_params()` was removed (options are set via `set_option`).
+- New `EventType` and `ChannelType` `cpdef` enums.
+- Context manager now calls `reset()` on exit (there is no `csoundCleanup`).
+- Pure-Python channel/table helpers: `list_channels()`, `get_string_channel()`,
+  `get_table()`, `get_table_args()`, `set_table()`, `get_audio_dev_list()`,
+  `get_midi_dev_list()`, `get_module()`.
+
+### Removed (no Csound 7 equivalent)
+
+- `get_api_version()`, `set_opcode_dir()`, `FileType` enum.
+- `perform()`, `perform_buffer()`, `stop()`, `cleanup()`.
+- `read_score()`, `score_event*`, `input_message*`, `kill_instance()`.
+- `table_get()` / `table_set()` single-slot accessors; the input/output buffer
+  and spin-sample accessors; `is_named_gen()` / `get_named_gen()`.
+- Low-level Cython-only helpers for threads, mutexes, circular buffers, global
+  variables, utilities, RNG, timers, and the various callback setters were not
+  carried over in this port and may be re-added against the Csound 7 callback
+  API in a later release.
+
 ## [0.1.0]
 
 ### Added

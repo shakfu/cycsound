@@ -12,7 +12,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from cycsound import Csound, get_version, get_api_version
+from cycsound import Csound, get_version
 
 
 def _setup_quiet(cs):
@@ -59,7 +59,7 @@ def cmd_play(args):
     except KeyboardInterrupt:
         print("\nInterrupted by user")
 
-    cs.cleanup()
+    cs.reset()
     return 0
 
 
@@ -108,10 +108,10 @@ def cmd_render(args):
             pass
     except KeyboardInterrupt:
         print("\nInterrupted by user", file=sys.stderr)
-        cs.cleanup()
+        cs.reset()
         return 1
 
-    cs.cleanup()
+    cs.reset()
 
     if not args.quiet:
         print(f"Done: {output_path}")
@@ -122,14 +122,12 @@ def cmd_render(args):
 def cmd_info(args):
     """Display Csound version information."""
     version = get_version()
-    api_version = get_api_version()
 
     major = version // 1000
     minor = (version % 1000) // 10
     patch = version % 10
 
     print(f"Csound version: {major}.{minor}.{patch} ({version})")
-    print(f"API version: {api_version}")
 
     if args.verbose:
         from cycsound import get_size_of_myflt

@@ -17,8 +17,7 @@
 
  You should have received a copy of the GNU Lesser General Public
  License along with Csound; if not, write to the Free Software
- Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- 02110-1301 USA
+ Foundation, Inc., 31 Milk Street, #960789, Boston, MA, 02196, USA
  */
 
 #ifndef __CSOUND_DATA_STRUCTURES_H
@@ -41,8 +40,8 @@ typedef struct _cs_hash_bucket_item {
 } CS_HASH_TABLE_ITEM;
 
 typedef struct _cs_hash_table {
-    int table_size;
-    int count;
+    int32_t table_size;
+    int32_t count;
     CS_HASH_TABLE_ITEM** buckets;
 } CS_HASH_TABLE;
 
@@ -60,7 +59,7 @@ PUBLIC CONS_CELL* cs_cons(CSOUND* csound, void* val, CONS_CELL* cons);
 PUBLIC CONS_CELL* cs_cons_append(CONS_CELL* cons1, CONS_CELL* cons2);
 
 /** Returns length of CONS_CELL list */
-PUBLIC int cs_cons_length(CONS_CELL* head);
+PUBLIC int32_t cs_cons_length(CONS_CELL* head);
 
 /** Frees CONS_CELL list but does not free ->value pointers */
 PUBLIC void cs_cons_free(CSOUND* csound, CONS_CELL* head);
@@ -96,7 +95,7 @@ PUBLIC char* cs_hash_table_put_key(CSOUND* csound,
                                    CS_HASH_TABLE* hashTable, char* key);
 
 /** Removes an entry from the hashtable using the given key.  If no
- entry found for key, simply returns. Calls mfree on the table
+ entry found for key, simply returns. Calls csoundFree on the table
  item. */
 PUBLIC void cs_hash_table_remove(CSOUND* csound,
                                  CS_HASH_TABLE* hashTable, char* key);
@@ -113,19 +112,19 @@ PUBLIC CONS_CELL* cs_hash_table_keys(CSOUND* csound, CS_HASH_TABLE* hashTable);
 /** Returns void* values as a cons list */
 PUBLIC CONS_CELL* cs_hash_table_values(CSOUND* csound, CS_HASH_TABLE* hashTable);
 
-/** Frees hash table and hash table items using mfree. Does not call
+/** Frees hash table and hash table items using csoundFree. Does not call
     free on ->value pointer. */
 PUBLIC void cs_hash_table_free(CSOUND* csound, CS_HASH_TABLE* hashTable);
 
-/** Frees hash table and hash table keys using mfree. Does call mfree
+/** Frees hash table and hash table keys using csoundFree. Does call csoundFree
     on ->value pointer. */
 PUBLIC void cs_hash_table_mfree_complete(CSOUND* csound, CS_HASH_TABLE* hashTable);
 
-/** Frees hash table hash table keys using mfree. Does call free on
+/** Frees hash table hash table keys using csoundFree. Does call free on
     ->value pointer. */
 PUBLIC void cs_hash_table_free_complete(CSOUND* csound, CS_HASH_TABLE* hashTable);
 
-char * cs_inverse_hash_get(CSOUND* csound, CS_HASH_TABLE* hashTable, int n);
+char * cs_inverse_hash_get(CSOUND* csound, CS_HASH_TABLE* hashTable, int32_t n);
 #ifdef __cplusplus
 }
 #endif

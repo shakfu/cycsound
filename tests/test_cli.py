@@ -41,7 +41,6 @@ class TestCLI:
         result = run_cli("info")
         assert result.returncode == 0
         assert "Csound version:" in result.stdout
-        assert "API version:" in result.stdout
 
     def test_info_verbose(self):
         """Test info -v command."""

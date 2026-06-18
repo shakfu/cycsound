@@ -8,14 +8,27 @@ option(STATIC "Build with static Csound libraries" OFF)
 
 # Platform-specific Csound configuration
 if(APPLE)
-    # macOS: Use CsoundLib64 framework
-    set(CSOUND_FRAMEWORK "/Library/Frameworks/CsoundLib64.framework")
+    # macOS: Use the vendored Csound 7 CsoundLib64 framework. If it is missing,
+    # fetch it automatically (over plain HTTPS, no GitHub account required) by
+    # running scripts/vendor_csound7.sh.
+    set(CSOUND_FRAMEWORK "${CMAKE_SOURCE_DIR}/vendor/CsoundLib64.framework")
     if(NOT EXISTS ${CSOUND_FRAMEWORK})
-        message(FATAL_ERROR "CsoundLib64 framework not found at ${CSOUND_FRAMEWORK}")
+        message(STATUS "Vendored CsoundLib64 framework not found; fetching Csound 7 beta...")
+        execute_process(
+            COMMAND bash "${CMAKE_SOURCE_DIR}/scripts/vendor_csound7.sh"
+            RESULT_VARIABLE VENDOR_RESULT)
+        if(NOT VENDOR_RESULT EQUAL 0 OR NOT EXISTS ${CSOUND_FRAMEWORK})
+            message(FATAL_ERROR
+                "Failed to vendor the Csound 7 framework via "
+                "scripts/vendor_csound7.sh. Run it manually and rebuild.")
+        endif()
     endif()
     set(CSOUND_INCLUDE_DIR "${CSOUND_FRAMEWORK}/Headers")
 
     if(STATIC)
+        message(FATAL_ERROR
+            "Static linking against the vendored Csound 7 framework is not "
+            "supported (it ships dynamic libraries only).")
         message(STATUS "Building with static Csound libraries")
 
         # Find Homebrew prefix
@@ -78,9 +91,11 @@ if(APPLE)
             "-framework CoreFoundation"
         )
     else()
-        # Dynamic linking
+        # Dynamic linking against the vendored framework. Its install id has
+        # been repointed to this absolute path by scripts/vendor_csound7.sh,
+        # so no rpath is required at runtime.
         set(CSOUND_LIBRARIES "-framework CsoundLib64")
-        set(CSOUND_FRAMEWORK_DIR "/Library/Frameworks")
+        set(CSOUND_FRAMEWORK_DIR "${CMAKE_SOURCE_DIR}/vendor")
     endif()
 
 elseif(WIN32)

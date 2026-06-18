@@ -1,36 +1,27 @@
-"""Example 2 - Compilation with Csound without CSD
+"""Example 2 - Compilation with Csound without a CSD.
 
-In this example, we move from using an external CSD file to 
-embedding our Csound ORC and SCO code within our Python project.
-Besides allowing encapsulating the code within the same file,
-using the CompileOrc() and CompileSco() API calls is useful when
-the SCO or ORC are generated, or perhaps coming from another 
-source, such as from a database or network.
+Embed the orchestra and score as Python strings and feed them to Csound 7 with
+compile_orc() and event_string() (the latter replaces the old read_score()).
 """
-import os, sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
 import cycsound
 
-# Defining our Csound ORC code within a triple-quoted, multiline String
 orc = """
 sr=44100
 ksmps=32
 nchnls=2
 0dbfs=1
 
-instr 1 
+instr 1
 aout vco2 0.5, 440
 outs aout, aout
 endin"""
 
-def test_compile_text():
-    sco = "i1 0 1"
-    c = cycsound.Csound()
-    c.set_option("-odac")
-    c.compile_orc(orc)
-    c.read_score(sco)
-    c.start()
-    c.perform()
-    c.stop()
 
+def test_compile_text():
+    sco = "i1 0 0.2"
+    c = cycsound.Csound()
+    c.set_option("-n")  # non-realtime
+    c.set_option("-d")
+    assert c.compile_orc(orc) == 0
+    c.event_string(sco)
+    assert c.run() == 0

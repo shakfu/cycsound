@@ -1,19 +1,19 @@
-"""Example 1 - Simple Compilation with Csound
+"""Example 1 - Simple compilation with Csound.
 
-This example is a barebones example for creating an instance of Csound, 
-compiling a pre-existing CSD, calling Perform to run Csound to completion,
-then Stop and exit.  
+Create a Csound instance, compile a pre-existing CSD, then run it to
+completion. Ported to the Csound 7 API (csoundCompile / csoundStart /
+csoundPerformKsmps; there is no csoundPerform/csoundStop in Csound 7).
 """
-import os, sys
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+import os
 
 import cycsound
+
+HERE = os.path.dirname(__file__)
 
 
 def test_compile():
     c = cycsound.Csound()
-    c.compile("dummy", "test1.csd")
-    c.perform()
-    c.stop()
- 
-
+    c.set_option("-n")  # non-realtime: no audio device needed
+    c.set_option("-d")
+    assert c.compile("dummy", os.path.join(HERE, "test1.csd")) == 0
+    assert c.run() == 0

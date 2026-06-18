@@ -64,3 +64,6 @@ dkms.conf
 # claude
 .claude
 CLAUDE.md
+
+# vendored Csound 7 framework (fetched via scripts/vendor_csound7.sh)
+vendor/

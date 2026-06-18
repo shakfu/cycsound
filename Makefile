@@ -4,29 +4,40 @@
 # This Makefile wraps common build commands for convenience.
 # The actual build is handled by scikit-build-core via pyproject.toml
 
-.PHONY: all sync build rebuild test test-cli clean distclean wheel wheel-static sdist check publish publish-test help
+.PHONY: all sync build rebuild test test-cli vendor clean distclean wheel wheel-static sdist check publish publish-test help
+
+# Vendored Csound 7 framework (downloaded on demand by scripts/vendor_csound7.sh)
+VENDOR_FRAMEWORK := vendor/CsoundLib64.framework
 
 # Default target
 all: build
 
+# Download/vendor the Csound 7 framework if it is not already present.
+# This is an order-only prerequisite of the build/test targets, so a missing
+# (or deleted) framework is fetched via curl before anything that needs it.
+$(VENDOR_FRAMEWORK):
+	@scripts/vendor_csound7.sh
+
+vendor: $(VENDOR_FRAMEWORK)
+
 # Sync environment (initial setup, installs dependencies + package)
-sync:
+sync: | $(VENDOR_FRAMEWORK)
 	@uv sync
 
 # Build/rebuild the extension after code changes
-build:
+build: | $(VENDOR_FRAMEWORK)
 	@uv sync --reinstall-package cycsound
 
 # Alias for build
 rebuild: build
 
 # Run tests
-test:
-	@uv run pytest tests/ -v
+test: | $(VENDOR_FRAMEWORK)
+	@uv run python -m pytest tests/ -v
 
 # Run CLI tests only
-test-cli:
-	@uv run pytest tests/test_cli.py -v
+test-cli: | $(VENDOR_FRAMEWORK)
+	@uv run python -m pytest tests/test_cli.py -v
 
 # Build wheel (dynamic linking)
 wheel:
