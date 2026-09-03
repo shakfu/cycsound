@@ -22,47 +22,56 @@ It offers an alternative to the default ctypes-based `ctcsound.py` wrapper.
 - **Context manager support** (calls `reset()` on exit)
 - **GIL release** for the blocking operations (compile/start/perform/reset)
 - **CLI** for common operations (play, render, check, info, eval)
-- **macOS** support via a repo-local (vendored) Csound 7 framework
+- **macOS and Linux** support via a repo-local (vendored) Csound 7 runtime
 
 ## Building From Source
 
-Prerequisites:
+The wrapper tracks Csound **7.0.0-beta.17**. Prerequisites:
 
 - Python >= 3.10
-- macOS (Apple Silicon or Intel)
-- `curl` (preinstalled on macOS) to download the beta framework
+- macOS (Apple Silicon or Intel) or Linux (x86_64)
+- `curl` (or `wget`) and `unzip` to download the release binaries
+- Linux only: `patchelf`, optional, to give the vendored opcode plugins an
+  rpath to the vendored library
 
-The Csound 7 macOS release ships as a `.pkg` whose framework has an absolute
-install name. The vendoring step downloads the public release asset over plain
-HTTPS (no GitHub account needed), extracts the `CsoundLib64.framework` into a
-repo-local `vendor/` directory, and repoints its install id so the built
-extension can find it at runtime -- without touching `/Library/Frameworks`
-(where a Csound 6 install can remain untouched).
+A package-manager `csound` is still Csound 6, whose host API this wrapper does
+not target, so the build stages the official Csound 7 release binaries in a
+repo-local `vendor/` directory instead. Any Csound 6 install on the machine is
+left untouched.
 
-The framework is fetched automatically when missing. The `make` targets
-(`sync`, `build`, `test`) carry an order-only prerequisite that runs the
-vendoring script if `vendor/CsoundLib64.framework` is absent, and CMake runs it
-during configure as well (so `pip install .` / `uv build`, which bypass `make`,
-are covered too). The usual flow is just:
+- **macOS**: the release ships a `.pkg` whose `CsoundLib64.framework` has an
+  absolute install name. The framework is extracted to
+  `vendor/CsoundLib64.framework` and its install id is repointed at that path,
+  so nothing is written to `/Library/Frameworks`.
+- **Linux**: the `linux-minimal` release ships `libcsound64.so` plus its opcode
+  plugins. They are staged as `vendor/lib/` and `vendor/plugins/`, and the
+  extension is built with an rpath to `vendor/lib`. That release carries no
+  headers, so the build uses the repo-local `include/` directory, which tracks
+  the same tag.
+
+The runtime is fetched automatically when missing. The `make` targets (`sync`,
+`build`, `test`) carry an order-only prerequisite that runs the vendoring
+script, and CMake runs it during configure as well (so `pip install .` /
+`uv build`, which bypass `make`, are covered too). The usual flow is just:
 
 ```bash
 git clone https://github.com/shakfu/cycsound.git
 cd cycsound
 
 make sync     # initial setup
-make build    # auto-vendors the Csound 7 framework on first build
+make build    # auto-vendors the Csound 7 runtime on first build
 ```
 
 To vendor manually (or pin a different beta tag), run the script directly:
 
 ```bash
-scripts/vendor_csound7.sh                 # default tag
+scripts/vendor_csound7.sh                 # default tag (7.0.0-beta.17)
 scripts/vendor_csound7.sh 7.0.0-beta.16   # explicit tag
 ```
 
-> Linux and Windows builds still reference a system Csound install in
-> `CMakeLists.txt` and have not yet been updated for the Csound 7 vendoring
-> flow.
+> Windows builds still reference a system Csound 7 install in `CMakeLists.txt`
+> (`C:/Program Files/Csound7_x64`, overridable via `CSOUND_ROOT`) and have not
+> been updated for the vendoring flow.
 
 ## Command-Line Interface
 
@@ -119,14 +128,30 @@ with cycsound.Csound() as cs:
 
 ### Plugin opcodes / realtime modules
 
-Built-in opcodes work out of the box. The vendored framework's plugin opcodes
-live in `vendor/CsoundLib64.framework/Resources/Opcodes64`. To load them (for
-realtime audio/MIDI modules such as `rtauhal`/`portaudio`, etc.), point the
-instance at that directory:
+On **macOS** the built-in opcodes work out of the box, and the vendored
+framework's plugin opcodes live in
+`vendor/CsoundLib64.framework/Resources/Opcodes64`. To load them (for realtime
+audio/MIDI modules such as `rtauhal`/`portaudio`, etc.), point the instance at
+that directory:
 
 ```python
 cs = cycsound.Csound(opcodedir="vendor/CsoundLib64.framework/Resources/Opcodes64")
 ```
+
+On **Linux** the release is a minimal build whose opcode library ships as
+external plugins, so most opcodes (`vco2`, `moogladder`, `diskgrain`, the
+realtime modules, ...) come from `vendor/plugins`. Two things make that work
+and both are handled by `cycsound/__init__.py` on import:
+
+- `OPCODE7DIR64` is pointed at `vendor/plugins` when it is unset and that
+  directory exists (a source build). Set the variable yourself to override.
+- The extension is loaded with `RTLD_GLOBAL`, because the plugins resolve
+  Csound symbols out of the global symbol namespace. Without it they fail to
+  register silently and orchestras using their opcodes do not compile.
+
+Note that Csound reads `OPCODE7DIR64` when the instance is created, so set it
+(or call `cycsound.set_global_env("OPCODE7DIR64", ...)`) before constructing a
+`Csound`.
 
 ## API Reference
 
@@ -137,6 +162,8 @@ cs = cycsound.Csound(opcodedir="vendor/CsoundLib64.framework/Resources/Opcodes64
 | `get_version()` | Csound version times 1000 (7.00.0 -> 7000) |
 | `get_size_of_myflt()` | Size of MYFLT in bytes (4 or 8) |
 | `initialize(flags=0)` | Initialize the library (rarely needed) |
+| `set_global_env(name, value)` | Set a process-wide Csound env var (`None` deletes) |
+| `sleep(milliseconds)` | Suspend the calling thread (releases the GIL) |
 
 ### Csound class
 
@@ -171,7 +198,14 @@ cs.set_option(option) / cs.get_params()  # get_params() is read-only
 # Channels
 cs.set_control_channel(name, value) / cs.get_control_channel(name)
 cs.set_string_channel(name, value) / cs.get_string_channel(name)
+cs.set_audio_channel(name, block) / cs.get_audio_channel(name)  # ksmps samples
+cs.set_control_channel_hints(name, behav, dflt=, min=, max=, ...)
+cs.get_control_channel_hints(name)      # -> dict, or None if unset
 cs.list_channels() / cs.lock_channel(name) / cs.unlock_channel(name)
+cs.get_channel_datasize(name) / cs.get_channel_var_type_name(name)
+
+# Utilities
+cs.run_utility("lpanal", *args)
 
 # Tables
 cs.table_length(n) / cs.get_table(n) / cs.set_table(n, values)
@@ -198,6 +232,12 @@ cycsound.ChannelType.STRING    # 3
 cycsound.ChannelType.INPUT     # 16
 cycsound.ChannelType.OUTPUT    # 32
 
+# Control channel hint behaviours
+cycsound.ChannelBehavior.NO_HINTS  # 0
+cycsound.ChannelBehavior.INT       # 1
+cycsound.ChannelBehavior.LIN       # 2
+cycsound.ChannelBehavior.EXP       # 3
+
 # Message types / colors (for message_special)
 cycsound.Msg.DEFAULT / cycsound.Msg.ERROR / cycsound.Msg.WARNING
 cycsound.Color.FG_RED / cycsound.Color.FG_GREEN / cycsound.Color.FG_BOLD
@@ -206,11 +246,11 @@ cycsound.Color.FG_RED / cycsound.Color.FG_GREEN / cycsound.Color.FG_BOLD
 ## Development
 
 ```bash
-make sync                   # initial environment setup (auto-vendors framework)
+make sync                   # initial environment setup (auto-vendors Csound 7)
 make build                  # rebuild after source changes
 make test                   # run the test suite
 make test-cli               # CLI tests only
-make vendor                 # (re)fetch the Csound 7 framework explicitly
+make vendor                 # (re)fetch the Csound 7 runtime explicitly
 ```
 
 ## Rationale

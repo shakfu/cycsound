@@ -80,9 +80,10 @@ skip = "*-win32 *-manylinux_i686 *-musllinux_*"
 test-command = "python -c \"import cycsound; print(cycsound.get_version())\""
 
 [tool.cibuildwheel.linux]
+# The Csound 7 release binaries are vendored by the build itself
+# (scripts/vendor_csound7.sh, run from CMake); only its tooling is needed here.
 before-all = [
-    "yum install -y epel-release || true",
-    "yum install -y csound csound-devel || (apt-get update && apt-get install -y csound libcsound64-dev)",
+    "yum install -y unzip || (apt-get update && apt-get install -y unzip)",
 ]
 
 [tool.cibuildwheel.macos]

@@ -99,8 +99,10 @@ if(APPLE)
     endif()
 
 elseif(WIN32)
-    # Windows: Use Csound6_x64 installation
-    set(CSOUND_ROOT "C:/Program Files/Csound6_x64")
+    # Windows: use a Csound 7 installation (the release ships an installer;
+    # override CSOUND_ROOT if it was installed elsewhere).
+    set(CSOUND_ROOT "C:/Program Files/Csound7_x64" CACHE PATH
+        "Root of the Csound 7 installation")
     set(CSOUND_INCLUDE_DIR "${CSOUND_ROOT}/include/csound")
     set(CSOUND_LIBRARY_DIR "${CSOUND_ROOT}/lib")
 
@@ -112,15 +114,33 @@ elseif(WIN32)
     set(CSOUND_LIBRARIES ${CSOUND_LIB})
 
 elseif(UNIX)
-    # Linux: Use system csound
-    set(CSOUND_INCLUDE_DIR "/usr/include/csound")
+    # Linux: use the vendored Csound 7 shared library. A distro `csound`
+    # package is still Csound 6, whose host API this wrapper does not target,
+    # so the Csound 7 release binaries are staged under vendor/ instead (and
+    # fetched automatically when missing, as on macOS).
+    set(CSOUND_VENDOR_LIB_DIR "${CMAKE_SOURCE_DIR}/vendor/lib")
+    if(NOT EXISTS "${CSOUND_VENDOR_LIB_DIR}/libcsound64.so")
+        message(STATUS "Vendored Csound 7 library not found; fetching Csound 7 beta...")
+        execute_process(
+            COMMAND bash "${CMAKE_SOURCE_DIR}/scripts/vendor_csound7.sh"
+            RESULT_VARIABLE VENDOR_RESULT)
+        if(NOT VENDOR_RESULT EQUAL 0
+           OR NOT EXISTS "${CSOUND_VENDOR_LIB_DIR}/libcsound64.so")
+            message(FATAL_ERROR
+                "Failed to vendor the Csound 7 library via "
+                "scripts/vendor_csound7.sh. Run it manually and rebuild.")
+        endif()
+    endif()
+
+    # The Linux release carries no headers; use the repo-local copy, which
+    # tracks the same Csound 7 tag.
+    set(CSOUND_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/include")
 
     if(STATIC)
         message(FATAL_ERROR "Static linking not yet supported on Linux")
     endif()
 
-    find_library(CSOUND_LIB csound64 REQUIRED)
-    set(CSOUND_LIBRARIES ${CSOUND_LIB})
+    set(CSOUND_LIBRARIES "${CSOUND_VENDOR_LIB_DIR}/libcsound64.so")
 
 else()
     message(FATAL_ERROR "Unsupported platform")
@@ -162,6 +182,11 @@ elseif(WIN32)
     target_link_libraries(_core PRIVATE ${CSOUND_LIBRARIES})
 else()
     target_link_libraries(_core PRIVATE ${CSOUND_LIBRARIES})
+    # Bake in the vendored library location so the extension resolves
+    # libcsound64.so without LD_LIBRARY_PATH.
+    set_target_properties(_core PROPERTIES
+        BUILD_RPATH "${CSOUND_VENDOR_LIB_DIR}"
+        INSTALL_RPATH "${CSOUND_VENDOR_LIB_DIR}")
 endif()
 
 # Install the extension module

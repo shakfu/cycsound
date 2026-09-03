@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Sync to Csound **7.0.0-beta.17** (from beta.16).
+
+### Build
+
+- `scripts/vendor_csound7.sh` now defaults to the `7.0.0-beta.17` tag and
+  vendors on Linux as well as macOS. On Linux it stages the
+  `csound-linux-minimal-x86_64` release asset as `vendor/lib/` (the shared
+  library) and `vendor/plugins/` (the opcode plugins), and gives the plugins an
+  rpath to the vendored library when `patchelf` is available.
+- `CMakeLists.txt`: the Linux branch links the vendored `libcsound64.so` with an
+  rpath instead of a system `csound64`, and takes its headers from the
+  repo-local `include/` (the Linux release ships none). It auto-runs the
+  vendoring script when the library is missing, as the macOS branch does. A
+  distro `csound` package is Csound 6, whose host API this wrapper does not
+  target.
+- `CMakeLists.txt`: the Windows branch points at `C:/Program Files/Csound7_x64`
+  (was `Csound6_x64`) and exposes `CSOUND_ROOT` as a cache variable.
+- `Makefile`: the vendoring prerequisite resolves per platform
+  (`vendor/CsoundLib64.framework` on macOS, `vendor/lib/libcsound64.so`
+  elsewhere).
+- CI and `cibuildwheel` no longer install a system Csound 6 on Linux/macOS;
+  those builds vendor Csound 7 during CMake configure.
+- `include/` verified byte-identical to the beta.17 headers (they are unchanged
+  from beta.16).
+
+### Fixed
+
+- Linux: the extension is now loaded with `RTLD_GLOBAL`, and `OPCODE7DIR64` is
+  pointed at `vendor/plugins` for a source build when it is unset. The Linux
+  release is a minimal build whose opcode library ships as external plugins;
+  those resolve Csound symbols out of the global symbol namespace, so without
+  this they failed to register silently and orchestras using them (`vco2`,
+  `moogladder`, `diskgrain`, ...) did not compile.
+
+### Added
+
+- `csound.pxd` now declares the full public surface of Csound 7's `csound.h`.
+  Previously missing: the message callbacks (`csoundSetMessageCallback`,
+  `csoundSetMessageStringCallback`, `csoundSetDefaultMessageCallback`,
+  `csoundMessageV`), the keyboard callbacks
+  (`csoundRegisterKeyboardCallback`/`csoundRemoveKeyboardCallback`), the
+  input/output channel callbacks, `csoundGetChannelVarType`, the array/string/
+  fsig channel data accessors (`csoundInitArrayChannel`, `csoundArrayData*`,
+  `csoundGet`/`SetArrayData`, `csoundGet`/`SetStringData`,
+  `csoundInitPvsChannel`, `csoundPvsData*`, `csoundGet`/`SetPvsData`),
+  `csoundAppendOpcode`/`csoundAppendOpcodes`, the `DEBUG_STATUS` levels, the
+  `CSOUNDINIT_*` flags and the `CSOUND_CALLBACK_KBD_*` types.
+- `Csound.set_audio_channel(name, block)` / `Csound.get_audio_channel(name)` -
+  read and write a ksmps-sized block on an audio channel.
+- `Csound.set_control_channel_hints(...)` /
+  `Csound.get_control_channel_hints(name)` - control channel display hints,
+  with a `ChannelBehavior` enum for the behaviour values.
+- `Csound.run_utility(name, *args)` - `csoundRunUtility`.
+- `set_global_env(name, value)` and `sleep(milliseconds)` module functions.
+
+### Known gaps
+
+The following are declared in `csound.pxd` but not yet exposed to Python: the
+message/keyboard/channel callbacks, the array and fsig (PVS) channel data
+accessors, and opcode registration.
+
 ## [0.2.0]
 
 Port from Csound 6 to **Csound 7** (beta). Csound 7 reworked the host C API, so

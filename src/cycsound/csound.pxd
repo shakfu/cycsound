@@ -31,13 +31,37 @@ cdef extern from "csound.h":
 
     ctypedef float MYFLT
 
-    cdef enum CSOUND_STATUS:
+    ctypedef enum CSOUND_STATUS:
         CSOUND_SUCCESS = 0
         CSOUND_ERROR = -1
         CSOUND_INITIALIZATION = -2
         CSOUND_PERFORMANCE = -3
         CSOUND_MEMORY = -4
         CSOUND_SIGNAL = -5
+
+    ctypedef enum DEBUG_STATUS:
+        DEBUG_NONE = 0
+        DEBUG_RUNTIME = 0x01
+        DEBUG_COMPILER = 0x02
+        DEBUG_SEMANTICS = 0x04
+        DEBUG_EXPRESSIONS = 0x08
+        DEBUG_PARSER = 0x10
+        DEBUG_TREE = 0x20
+        DEBUG_INSTR = 0x40
+        DEBUG_OPCODES = 0x80
+        DEBUG_PARCS = 0x100
+        DEBUG_FULL = 0x7FFFFFFF
+
+    # Compilation/performance aborted without an error (e.g. --help).
+    cdef int CSOUND_EXITJMP_SUCCESS
+
+    # Flags for csoundInitialize().
+    cdef int CSOUNDINIT_NO_SIGNAL_HANDLER
+    cdef int CSOUNDINIT_NO_ATEXIT
+
+    # Types for keyboard callbacks (csoundRegisterKeyboardCallback()).
+    cdef uint32_t CSOUND_CALLBACK_KBD_EVENT
+    cdef uint32_t CSOUND_CALLBACK_KBD_TEXT
 
     # csoundEvent() event types
     cdef enum:
@@ -109,7 +133,7 @@ cdef extern from "csound.h":
         int32_t isOutput
 
     # Bus interface constants (csoundGetChannelPtr() etc.).
-    cdef enum controlChannelType:
+    ctypedef enum controlChannelType:
         CSOUND_CONTROL_CHANNEL = 1
         CSOUND_AUDIO_CHANNEL = 2
         CSOUND_STRING_CHANNEL = 3
@@ -120,7 +144,7 @@ cdef extern from "csound.h":
         CSOUND_INPUT_CHANNEL = 16
         CSOUND_OUTPUT_CHANNEL = 32
 
-    cdef enum controlChannelBehavior:
+    ctypedef enum controlChannelBehavior:
         CSOUND_CONTROL_CHANNEL_NO_HINTS = 0
         CSOUND_CONTROL_CHANNEL_INT = 1
         CSOUND_CONTROL_CHANNEL_LIN = 2
@@ -141,6 +165,11 @@ cdef extern from "csound.h":
         char *name
         int32_t type
         controlChannelHints_t hints
+
+    ctypedef void (*channelCallback_t)(CSOUND *csound,
+                                       const char *channelName,
+                                       void *channelValuePtr,
+                                       const void *channelType) noexcept nogil
 
     # ---- Instantiation ----
     int32_t csoundInitialize(int32_t flags) nogil
@@ -191,6 +220,18 @@ cdef extern from "csound.h":
     # ---- Messages ----
     void csoundMessage(CSOUND *, const char *format, ...) nogil
     void csoundMessageS(CSOUND *, int32_t attr, const char *format, ...) nogil
+    void csoundMessageV(CSOUND *, int32_t attr, const char *format, va_list args) nogil
+    void csoundSetDefaultMessageCallback(
+        void (*csoundMessageCallback_)(CSOUND *, int32_t attr,
+                                       const char *format, va_list valist) noexcept nogil) nogil
+    void csoundSetMessageCallback(
+        CSOUND *,
+        void (*csoundMessageCallback_)(CSOUND *, int32_t attr,
+                                       const char *format, va_list valist) noexcept nogil) nogil
+    void csoundSetMessageStringCallback(
+        CSOUND *csound,
+        void (*csoundMessageStrCallback)(CSOUND *csound, int32_t attr,
+                                         const char *str) noexcept nogil) nogil
     void csoundCreateMessageBuffer(CSOUND *, int32_t toStdOut) nogil
     const char *csoundGetFirstMessage(CSOUND *) nogil
     int32_t csoundGetFirstMessageAttr(CSOUND *) nogil
@@ -213,12 +254,43 @@ cdef extern from "csound.h":
     void csoundSetAudioChannel(CSOUND *, const char *name, const MYFLT *samples) nogil
     void csoundGetStringChannel(CSOUND *, const char *name, char *string) nogil
     void csoundSetStringChannel(CSOUND *, const char *name, const char *string) nogil
+    const CS_TYPE *csoundGetChannelVarType(CSOUND *, const char *name) nogil
     int32_t csoundGetChannelDatasize(CSOUND *, const char *name) nogil
+    void csoundSetInputChannelCallback(CSOUND *, channelCallback_t inputChannelCalback) nogil
+    void csoundSetOutputChannelCallback(CSOUND *, channelCallback_t outputChannelCalback) nogil
+
+    # ---- Array, string and fsig channel data ----
+    ARRAYDAT *csoundInitArrayChannel(CSOUND *, const char *name, const char *type,
+                                     int32_t dimensions, const int32_t *sizes) nogil
+    const char *csoundArrayDataType(const ARRAYDAT *adat) nogil
+    int32_t csoundArrayDataDimensions(const ARRAYDAT *adat) nogil
+    const int32_t *csoundArrayDataSizes(const ARRAYDAT *adat) nogil
+    void csoundSetArrayData(ARRAYDAT *adat, const void *data) nogil
+    const void *csoundGetArrayData(const ARRAYDAT *adat) nogil
+    const char *csoundGetStringData(CSOUND *, STRINGDAT *sdata) nogil
+    void csoundSetStringData(CSOUND *, STRINGDAT *sdata, const char *str) nogil
+    PVSDAT *csoundInitPvsChannel(CSOUND *, const char *name, int32_t size,
+                                 int32_t overlap, int32_t winsize,
+                                 int32_t wintype, int32_t format) nogil
+    int32_t csoundPvsDataFFTSize(const PVSDAT *pvsdat) nogil
+    int32_t csoundPvsDataOverlap(const PVSDAT *pvsdat) nogil
+    int32_t csoundPvsDataWindowSize(const PVSDAT *pvsdat) nogil
+    int32_t csoundPvsDataFormat(const PVSDAT *pvsdat) nogil
+    uint32_t csoundPvsDataFramecount(const PVSDAT *pvsdat) nogil
+    const float *csoundGetPvsData(const PVSDAT *pvsdat) nogil
+    void csoundSetPvsData(PVSDAT *pvsdat, const float *frame) nogil
 
     void csoundEvent(CSOUND *, int32_t type, const MYFLT *params, int32_t nparams, int32_t is_async) nogil
     void csoundEventString(CSOUND *, const char *message, int32_t is_async) nogil
     int32 csoundGetInstrNumber(CSOUND *, const char *name) nogil
     void csoundKeyPress(CSOUND *, char c) nogil
+    int32_t csoundRegisterKeyboardCallback(
+        CSOUND *,
+        int32_t (*func)(void *userData, void *p, uint32_t type) noexcept nogil,
+        void *userData, uint32_t type) nogil
+    void csoundRemoveKeyboardCallback(
+        CSOUND *,
+        int32_t (*func)(void *, void *, uint32_t) noexcept nogil) nogil
 
     # ---- Tables ----
     int32_t csoundTableLength(CSOUND *, int32_t table) nogil
@@ -240,6 +312,13 @@ cdef extern from "csound.h":
 
     # ---- Opcodes ----
     int32_t csoundLoadPlugins(CSOUND *, const char *dir) nogil
+    int32_t csoundAppendOpcode(CSOUND *, const char *opname, size_t dsblksiz,
+                               int32_t flags, const char *outypes,
+                               const char *intypes,
+                               int32_t (*init)(CSOUND *, void *) noexcept nogil,
+                               int32_t (*perf)(CSOUND *, void *) noexcept nogil,
+                               int32_t (*deinit)(CSOUND *, void *) noexcept nogil) nogil
+    int32_t csoundAppendOpcodes(CSOUND *, const OENTRY *oplist, int32_t len) nogil
 
 
 cdef extern from "csound_compiler.h":

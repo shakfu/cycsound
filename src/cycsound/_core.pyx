@@ -82,6 +82,14 @@ cpdef enum EventType:
     ADVANCE = 3   # score advance event
 
 
+cpdef enum ChannelBehavior:
+    """Control channel hint behaviours (csoundSetControlChannelHints())."""
+    NO_HINTS = 0
+    INT = 1
+    LIN = 2
+    EXP = 3
+
+
 cpdef enum ChannelType:
     """Channel kinds and direction flags for the bus interface."""
     CONTROL = 1
@@ -118,6 +126,27 @@ def get_version() -> int:
 def get_size_of_myflt() -> int:
     """Return the size of MYFLT in bytes (4 for float, 8 for double)."""
     return cs.csoundGetSizeOfMYFLT()
+
+
+def set_global_env(str name, value) -> int:
+    """Set an environment variable for all Csound instances in this process.
+
+    Pass ``None`` as ``value`` to delete the variable. Returns zero on
+    success. This must be called before creating any ``Csound`` instance for
+    variables that are read at creation time (e.g. ``OPCODE7DIR64``).
+    """
+    cdef bytes value_b
+    if value is None:
+        return cs.csoundSetGlobalEnv(name.encode(), NULL)
+    value_b = value.encode()
+    return cs.csoundSetGlobalEnv(name.encode(), value_b)
+
+
+def sleep(int milliseconds):
+    """Suspend the calling thread for at least the given number of ms."""
+    cdef size_t ms = milliseconds
+    with nogil:
+        cs.csoundSleep(ms)
 
 
 ## ----------------------------------------------------------------------------
@@ -461,6 +490,15 @@ cdef class Csound:
     ## ------------------------------------------------------------------------
     ## Events and score
 
+    def run_utility(self, str name, *args) -> int:
+        """Run a utility (e.g. ``"lpanal"``) with the given arguments.
+
+        Returns zero on success.
+        """
+        cdef ArgArray params = ArgArray(args)
+        return cs.csoundRunUtility(self.ptr, name.encode(), params.argc,
+                                   <char **>params.argv)
+
     def event(self, int event_type, object params, bint async_=False):
         """Schedule a realtime event.
 
@@ -799,6 +837,80 @@ cdef class Csound:
             return buf.decode()
         finally:
             free(buf)
+
+    def set_audio_channel(self, str name, object samples):
+        """Copy a ksmps-sized block of samples into an audio channel."""
+        cdef int ksmps = cs.csoundGetKsmps(self.ptr)
+        cdef int n = len(samples)
+        if n != ksmps:
+            raise ValueError(
+                f"audio channel expects {ksmps} samples (ksmps), got {n}")
+        cdef cs.MYFLT *buf = <cs.MYFLT *>malloc(n * sizeof(cs.MYFLT))
+        if buf is NULL:
+            raise MemoryError()
+        try:
+            for i in range(n):
+                buf[i] = samples[i]
+            cs.csoundSetAudioChannel(self.ptr, name.encode(), buf)
+        finally:
+            free(buf)
+
+    def get_audio_channel(self, str name) -> list:
+        """Return a ksmps-sized block of samples read from an audio channel."""
+        cdef int n = cs.csoundGetKsmps(self.ptr)
+        cdef cs.MYFLT *buf = <cs.MYFLT *>malloc(n * sizeof(cs.MYFLT))
+        if buf is NULL:
+            raise MemoryError()
+        try:
+            cs.csoundGetAudioChannel(self.ptr, name.encode(), buf)
+            return [buf[i] for i in range(n)]
+        finally:
+            free(buf)
+
+    def set_control_channel_hints(self, str name, int behav=0, float dflt=0.0,
+                                  float min=0.0, float max=0.0, int x=0, int y=0,
+                                  int width=0, int height=0,
+                                  str attributes=None) -> int:
+        """Attach display hints to a control channel.
+
+        ``behav`` is a ``ChannelBehavior`` value. Returns zero on success,
+        or a negative status if the channel does not exist or is not a
+        control channel.
+        """
+        cdef cs.controlChannelHints_t hints
+        cdef bytes attr_b
+        hints.behav = <cs.controlChannelBehavior>behav
+        hints.dflt = dflt
+        hints.min = min
+        hints.max = max
+        hints.x = x
+        hints.y = y
+        hints.width = width
+        hints.height = height
+        if attributes is None:
+            hints.attributes = NULL
+        else:
+            attr_b = attributes.encode()
+            hints.attributes = attr_b
+        return cs.csoundSetControlChannelHints(self.ptr, name.encode(), hints)
+
+    def get_control_channel_hints(self, str name):
+        """Return a control channel's hints as a dict, or None if it has none."""
+        cdef cs.controlChannelHints_t hints
+        if cs.csoundGetControlChannelHints(self.ptr, name.encode(), &hints) != 0:
+            return None
+        return {
+            "behav": <int>hints.behav,
+            "dflt": hints.dflt,
+            "min": hints.min,
+            "max": hints.max,
+            "x": hints.x,
+            "y": hints.y,
+            "width": hints.width,
+            "height": hints.height,
+            "attributes": (None if hints.attributes is NULL
+                           else hints.attributes.decode()),
+        }
 
     def get_channel_datasize(self, str name) -> int:
         """Return the size in bytes of the data stored in a channel."""

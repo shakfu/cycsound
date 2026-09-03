@@ -6,13 +6,18 @@
 
 .PHONY: all sync build rebuild test test-cli vendor clean distclean wheel wheel-static sdist check publish publish-test help
 
-# Vendored Csound 7 framework (downloaded on demand by scripts/vendor_csound7.sh)
+# Vendored Csound 7 runtime (downloaded on demand by scripts/vendor_csound7.sh):
+# a CsoundLib64 framework on macOS, a shared library on Linux.
+ifeq ($(shell uname),Darwin)
 VENDOR_FRAMEWORK := vendor/CsoundLib64.framework
+else
+VENDOR_FRAMEWORK := vendor/lib/libcsound64.so
+endif
 
 # Default target
 all: build
 
-# Download/vendor the Csound 7 framework if it is not already present.
+# Download/vendor the Csound 7 runtime if it is not already present.
 # This is an order-only prerequisite of the build/test targets, so a missing
 # (or deleted) framework is fetched via curl before anything that needs it.
 $(VENDOR_FRAMEWORK):

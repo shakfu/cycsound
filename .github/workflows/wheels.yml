@@ -21,18 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Csound (Ubuntu)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y csound libcsound64-dev
-
-      - name: Install Csound (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install --cask csound
-
-      - name: Install Csound (Windows)
+      # Linux and macOS builds vendor the Csound 7 release binaries during
+      # the CMake configure step (scripts/vendor_csound7.sh), so no system
+      # Csound install is needed -- and a distro/Homebrew package would be
+      # Csound 6, whose host API this wrapper does not target.
+      - name: Install Csound 7 (Windows)
         if: runner.os == 'Windows'
         run: |
           choco install csound -y
@@ -44,10 +37,10 @@ jobs:
           CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-*"
           # Skip 32-bit builds and musl Linux
           CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_*"
-          # Install Csound before building on Linux
+          # The Csound 7 release binaries are fetched by the build itself;
+          # make sure the tools the vendoring script needs are present.
           CIBW_BEFORE_ALL_LINUX: |
-            yum install -y epel-release || true
-            yum install -y csound csound-devel || (apt-get update && apt-get install -y csound libcsound64-dev)
+            yum install -y unzip || (apt-get update && apt-get install -y unzip)
           # Install build dependencies
           CIBW_BUILD_FRONTEND: "build"
           # Test the built wheel
