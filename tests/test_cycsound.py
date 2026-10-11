@@ -214,3 +214,35 @@ def test_channel_type_enum():
 def test_initialize():
     """initialize() returns 0 on success or positive if already initialized."""
     assert cycsound.initialize() >= 0
+
+
+EVENT_ORC = """
+ksmps = 32
+instr 1
+    chnset p4, "p4"
+endin
+instr 99
+endin
+"""
+
+
+def test_sync_event_before_start_raises():
+    # Csound drops a synchronous csoundEvent() before csoundStart().
+    import pytest
+    cs = cycsound.Csound()
+    cs.set_option("-n")
+    assert cs.compile_orc(EVENT_ORC) == 0
+    with pytest.raises(RuntimeError, match="start"):
+        cs.event(cycsound.EventType.INSTR, [1, 0, 0.1, 9])
+
+
+def test_async_event_before_start_plays():
+    cs = cycsound.Csound()
+    cs.set_option("-n")
+    assert cs.compile_orc(EVENT_ORC) == 0
+    cs.event_string("i 99 0 1")
+    cs.event(cycsound.EventType.INSTR, [1, 0.05, 0.05, 9], async_=True)
+    assert cs.start() == 0
+    while cs.get_score_time() < 0.1:
+        assert cs.perform_ksmps() == 0
+    assert cs.get_control_channel("p4") == 9

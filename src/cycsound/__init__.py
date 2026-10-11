@@ -35,6 +35,8 @@ from cycsound._core import (
     # Module-level functions
     initialize,
     get_version,
+    get_size_of_cs_float,
+    get_size_of_cs_double,
     get_size_of_myflt,
     set_global_env,
     sleep,
@@ -47,15 +49,22 @@ from cycsound._core import (
     EventType,
     ChannelType,
     ChannelBehavior,
+    PvsWindow,
+    PvsFormat,
+    KeyCallbackType,
     # Classes
     Csound,
     Params,
+    PvsData,
+    CsoundPerformanceThread,
     Tree,
 )
 
 __all__ = [
     "initialize",
     "get_version",
+    "get_size_of_cs_float",
+    "get_size_of_cs_double",
     "get_size_of_myflt",
     "set_global_env",
     "sleep",
@@ -66,7 +75,12 @@ __all__ = [
     "EventType",
     "ChannelType",
     "ChannelBehavior",
+    "PvsWindow",
+    "PvsFormat",
+    "KeyCallbackType",
     "Csound",
     "Params",
+    "PvsData",
+    "CsoundPerformanceThread",
     "Tree",
 ]

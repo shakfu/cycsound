@@ -165,8 +165,8 @@ python_add_library(_core MODULE _core.c WITH_SOABI)
 # Set include directories
 target_include_directories(_core PRIVATE ${CSOUND_INCLUDE_DIR})
 
-# Define MYFLT as double (matches original setup.py)
-target_compile_definitions(_core PRIVATE MYFLT=double USE_DOUBLE)
+# Build against the double-precision (cs_float == double) Csound API
+target_compile_definitions(_core PRIVATE USE_DOUBLE)
 
 # Link Csound library
 if(APPLE)

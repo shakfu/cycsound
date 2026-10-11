@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Sync to Csound **7.0.0-beta.17** (from beta.16).
+Sync to Csound **7.0.0-beta.18** (from beta.16).
 
 ### Build
 
-- `scripts/vendor_csound7.sh` now defaults to the `7.0.0-beta.17` tag and
+- `scripts/vendor_csound7.sh` now defaults to the `7.0.0-beta.18` tag and
   vendors on Linux as well as macOS. On Linux it stages the
   `csound-linux-minimal-x86_64` release asset as `vendor/lib/` (the shared
   library) and `vendor/plugins/` (the opcode plugins), and gives the plugins an
@@ -29,11 +29,48 @@ Sync to Csound **7.0.0-beta.17** (from beta.16).
   elsewhere).
 - CI and `cibuildwheel` no longer install a system Csound 6 on Linux/macOS;
   those builds vendor Csound 7 during CMake configure.
-- `include/` verified byte-identical to the beta.17 headers (they are unchanged
-  from beta.16).
+- `include/` synced to the beta.18 headers. beta.18 renames `MYFLT` to
+  `cs_float` (`csound_types.h`) and re-declares `MYFLT` as a deprecated
+  typedef, so the `MYFLT=double` compile definition is dropped: it expanded
+  that typedef to `typedef cs_float double` and broke the build.
+
+### Changed
+
+- `Csound.event()` raises `RuntimeError` when called synchronously before
+  `start()`. Csound dropped such events silently (both `i` and `f`). Use
+  `event_string()`, or `async_=True` for at most 1024 queued events.
+- `set_keyboard_callback()` registers its C function once and swaps only the
+  Python callable, including on `None`. Csound frees keyboard-list entries
+  without a lock while the performing thread walks the list.
+- The C host data of a `Csound` instance now points at its callback state,
+  not at the `host_data` object. Code that read `csoundGetHostData()` from
+  Cython must use `Csound.host_data`.
 
 ### Fixed
 
+- `compile_tree()` and `udp_server_close()` deadlocked with a callback set. A
+  performing thread holds `API_lock` while its callback waits for the GIL.
+  `compile_tree` held the GIL while its sync merge waited for `API_lock`.
+  `udp_server_close` held it while joining a server thread that prints on
+  exit. Both now release the GIL. See `docs/dev/deadlock-audit.md`.
+- `udp_console()` and a message callback or hook now raise `RuntimeError`
+  while the other is active: the console replaces Csound's message callback.
+  `stop_udp_console()` re-installs the callback.
+- Callback workarounds for Csound behaviour, found while adding callbacks
+  (upstream drafts in `docs/dev/issues/`):
+  - `reset()` reverts the message string callback to the default printer;
+    the wrapper re-installs it.
+  - `csoundDoCallback_` returns 1 even when a keyboard callback succeeds, so
+    `sensekey` polled stdin and overwrote the key. Registering a keyboard
+    callback or hook now calls `csoundKeyPress(cs, 0)`, which stops the
+    polling, and repeats it after `reset()`.
+  - Csound's C atexit handler destroys live instances after Python has
+    finalized. A message callback then blocked forever waiting for the GIL.
+    Callbacks are now detached from live instances in a Python atexit
+    handler, and the trampolines skip Python once finalization starts.
+- `Csound.get_control_channel_hints()` leaked the `attributes` string; Csound
+  allocates a copy per call, now released with
+  `csoundDeleteControlChannelHints`.
 - Linux: the extension is now loaded with `RTLD_GLOBAL`, and `OPCODE7DIR64` is
   pointed at `vendor/plugins` for a source build when it is unset. The Linux
   release is a minimal build whose opcode library ships as external plugins;
@@ -61,12 +98,55 @@ Sync to Csound **7.0.0-beta.17** (from beta.16).
   with a `ChannelBehavior` enum for the behaviour values.
 - `Csound.run_utility(name, *args)` - `csoundRunUtility`.
 - `set_global_env(name, value)` and `sleep(milliseconds)` module functions.
+- beta.18 host API:
+  - `Csound.set_command_line_args(*args)` / `get_command_line_args()` - the
+    arguments after `--` that the orchestra reads with `argv`.
+  - `Csound.copy_channel(source, dest)` - `csoundGetChannel` +
+    `csoundSetChannel`; copies a channel of any type. A raw `CS_VAR_MEM`
+    handle is not exposed: Python cannot interpret it without the type system.
+  - `Csound.init_pvs_channel(...)`, `set_pvs_channel(name, data)`,
+    `get_pvs_channel(name, data)`, and the `PvsData`, `PvsWindow` and
+    `PvsFormat` types. `init_pvs_channel` raises before `start()` because
+    Csound segfaults allocating the frame then. A `PvsData` raises after
+    `reset()` instead of reading freed memory. `PvsData.set_frame` writes
+    exactly `fft_size + 2` floats instead of calling `csoundSetPvsData`, which
+    copies the allocated frame size and overreads once a smaller frame has
+    been copied in.
+  - `Csound.readline_push_text(text)` - input for the `readline` opcode.
+  - `Csound.perform_output_fade(frames)` - a no-op without realtime output.
+  - `get_size_of_cs_float()` / `get_size_of_cs_double()`;
+    `get_size_of_myflt` is kept as an alias.
+  - `Params.recursion_depth`.
+- Callbacks for messages, `invalue`/`outvalue` channels and keyboard input,
+  at two levels:
+  - Python callables, called with the GIL: `set_message_callback`,
+    `set_input_channel_callback`, `set_output_channel_callback`,
+    `set_keyboard_callback`, with a `KeyCallbackType` enum.
+  - C function pointers, passed as int addresses and called without the GIL:
+    `set_message_hook`, `set_input_channel_hook`, `set_output_channel_hook`,
+    `register_keyboard_hook` / `remove_keyboard_hook`. Addresses over a
+    Cython-level API because the wheel ships no `.pxd`; any C-callable
+    (Cython, ctypes, cffi, numba `cfunc`) works.
+
+  A hook and a callback may share a slot; the hook runs first. A message
+  callback and the message buffer cannot both be set, since Csound routes to
+  one: each setter raises `RuntimeError` while the other is active.
+- `Csound.host_data` returns the constructor's `host_data`.
+- `CsoundPerformanceThread(csound)`: performs a started instance on a native
+  thread, wrapping Csound's `csPerfThread` C API. Its unbounded, locked
+  message queue is the safe way to send events, code and score changes from
+  other threads. The Csound API's own `async` queue holds 1024 entries and
+  busy-waits when full. Process callbacks come at both levels
+  (`set_process_callback`, `set_process_hook`). `eval_code` and
+  `request_callback` run Python on the performance thread. `join`,
+  `flush_message_queue` and destruction release the GIL, and live threads
+  are stopped at interpreter exit. `tests/test_thread.py` is rewritten for
+  the Csound 7 API and no longer skipped.
 
 ### Known gaps
 
 The following are declared in `csound.pxd` but not yet exposed to Python: the
-message/keyboard/channel callbacks, the array and fsig (PVS) channel data
-accessors, and opcode registration.
+array channel data accessors and opcode registration.
 
 ## [0.2.0]
 

@@ -29,17 +29,15 @@ aout vco2 0.5, 440
 outs aout, aout
 endin"""
 
-@pytest.mark.skipif(not hasattr(cycsound, 'CsoundPerformanceThread'),
-                    reason="requires the CsoundPerformanceThread class")
 def test_thread():
+    # Csound 7: events are queued with event_string() and the thread wraps
+    # the Csound object. -n replaces -odac so the test needs no audio device.
     sco = "i1 0 1"
     c = cycsound.Csound()
-    c.set_option("-odac")
+    c.set_option("-n")
     c.compile_orc(orc)
-    c.read_score(sco)
-    c.start()
-    t = cycsound.CsoundPerformanceThread(c.csound())
+    c.event_string(sco)
+    assert c.start() == 0
+    t = cycsound.CsoundPerformanceThread(c)
     t.play()
-    t.join()
-    c.stop()
-    c.cleanup()
+    assert t.join() > 0  # end of score

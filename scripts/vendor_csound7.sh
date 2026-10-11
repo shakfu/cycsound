@@ -28,7 +28,7 @@
 # Usage: scripts/vendor_csound7.sh [tag]
 set -euo pipefail
 
-TAG="${1:-7.0.0-beta.17}"
+TAG="${1:-7.0.0-beta.18}"
 REPO="csound/csound"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

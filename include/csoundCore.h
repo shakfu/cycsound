@@ -58,6 +58,20 @@
 extern "C" {
 #endif /*  __cplusplus */
 
+/* Source annotations, consumed by scripts/opcode_deprecations.py.
+ * These expand to nothing: no runtime cost and no plugin ABI change.
+ * Keep the descriptor beside its opcode registration. A frozen function must
+ * also carry CSOUND_PRESERVE_LEGACY_BEHAVIOR immediately before its definition.
+ * See docs/opcode-deprecation.md before changing historical behavior.
+ */
+#define CSOUND_DEPRECATED_OPCODE(name, replacement, policy, note)
+
+/* STOP: known legacy behavior is retained for compatibility. Do not correct
+ * historical output under this opcode name without a maintainer decision.
+ * See the CSOUND_DEPRECATED_OPCODE descriptor in the same source file.
+ */
+#define CSOUND_PRESERVE_LEGACY_BEHAVIOR(name)
+
 /** @name Arguments, opcodes, and instrument defs */
 /**@{ */
 
@@ -97,17 +111,27 @@ extern "C" {
     SUBR    perf;
     SUBR    deinit;
     void    *useropinfo; /* user opcode parameters */
-    int32_t deprecated;  /* deprecation flag */
+    int32_t deprecated;  /* 1: deprecated, 2: renamed; see
+                           local CSOUND_DEPRECATED_OPCODE descriptors and
+                           docs/opcode-deprecation.md before behavior changes. */
   } OENTRY;
 
 
   /**
    *   holds OENTRYs for opcode overloads
    **/
+#ifdef _MSC_VER
+#  pragma warning(push)
+/* This trailing array is extended by the allocation without changing the ABI. */
+#  pragma warning(disable: 4200)
+#endif
    typedef struct oentries {
-      int32_t count;                /* Number of etries in table */
-      OENTRY* entries[0];       /* Entended by count entries */
+      int32_t count;            /* Number of entries in table */
+      OENTRY* entries[0];       /* Extended by count entries */
     } OENTRIES;
+#ifdef _MSC_VER
+#  pragma warning(pop)
+#endif
 
 
   /**
@@ -138,7 +162,7 @@ typedef struct instr {
   CS_VAR_POOL *varPool;
   int16 muted;
   int32 opdstot;              /* Total size of opds structs in instr */
-  MYFLT *psetdata;            /* Used for pset opcode */
+  cs_float *psetdata;            /* Used for pset opcode */
   struct insds *instance;     /* Chain of allocated instances of
                                  this instrument */
   struct insds *lst_instance; /* last allocated instance */
@@ -149,12 +173,13 @@ typedef struct instr {
   int32_t pending_release; /* To count instruments in release phase */
   int32_t maxalloc;
   int32_t turnoff_mode; /* Opt turnoff instruments instances above maxalloc */
-  MYFLT cpuload;    /* % load this instrumemnt makes */
+  cs_float cpuload;    /* % load this instrumemnt makes */
   struct opcodinfo *opcode_info; /* UDO info (when instrs are UDOs) */
   char *insname;                 /* instrument name */
   int32_t instcnt;               /* Count number of instances ever */
   int32_t isNew;                 /* is this a new definition */
   int32_t nocheckpcnt;           /* Control checks on pcnt */
+  int32_t glbvarcnt;             /* global audio var count */
 } INSTRTXT;
 
 /**
@@ -224,7 +249,7 @@ typedef struct {
       OCTAVE data
   */
   typedef struct {
-    MYFLT   *begp, *curp, *endp, feedback[6];
+    cs_float   *begp, *curp, *endp, feedback[6];
     int32    scount;
   } OCTDAT;
 
@@ -234,7 +259,7 @@ typedef struct {
   */
   typedef struct {
     int32    npts, nocts, nsamps;
-    MYFLT   lofrq, hifrq, looct, srate;
+    cs_float   lofrq, hifrq, looct, srate;
     OCTDAT  octdata[MAXOCTS];
     AUXCH   auxch;
   } DOWNDAT;
@@ -253,13 +278,20 @@ typedef struct {
   /**
    * Type definition for arrays
    */
+  struct cs_array_storage;
   struct arraydat {
     int32_t      dimensions; /* number of array dimensions */
     int32_t*     sizes;  /* size of each dimensions */
     int32_t      arrayMemberSize; /* size of each item */
     const struct cstype* arrayType; /* type of array */
-    MYFLT*   data; /* data */
+    cs_float*   data; /* data */
     size_t   allocated; /* size of allocated data */
+    /* Opaque ownership sidecar for structured arrays. Appending it preserves
+       existing member offsets but changes sizeof(ARRAYDAT), so external code
+       embedding the struct must rebuild against this header. Direct ARRAYDAT
+       constructors must initialize the field to NULL; ownership changes must
+       go through the array type callbacks rather than copying this pointer. */
+    struct cs_array_storage* storage;
   };
 
   /**
@@ -276,8 +308,8 @@ typedef struct {
   typedef struct opcodeObj {
     struct opds *dataspace; // opcode dataspace
     size_t size;            // dataspace size
-    MYFLT **outargp;        // ptr to the first output arg
-    MYFLT **inargp;         // ptr to first input arg
+    cs_float **outargp;        // ptr to the first output arg
+    cs_float **inargp;         // ptr to first input arg
     int32_t udo_flag;       // set if opcode is UDO
     int32_t readonly;       // readonly flag
   } OPCODEOBJ;
@@ -297,7 +329,6 @@ typedef struct {
   struct stringdat {
     char *data;         // null-terminated string
     size_t size;        // total allocated size
-    int64_t timestamp;  // used internally for updates
     int32_t refcount;   // reference count for shared buffers (0 = unmanaged)
   };
 
@@ -305,8 +336,8 @@ typedef struct {
    * Type definition for complex numbers
    */
   typedef struct complexdat {
-    MYFLT real;
-    MYFLT imag;
+    cs_float real;
+    cs_float imag;
     int32_t isPolar;
   } COMPLEXDAT;
 
@@ -344,7 +375,7 @@ typedef struct {
     struct dklst *nxtlst;
     int32    pgmno;
     /** cnt + keynos */
-    MYFLT   keylst[1];
+    cs_float   keylst[1];
   } DKLST;
 
   typedef struct mchnblk {
@@ -361,17 +392,17 @@ typedef struct {
     /** list of active notes (NULL: not active) */
     struct insds *kinsptr[128];
     /** polyphonic pressure indexed by note number */
-    MYFLT   polyaft[128];
+    cs_float   polyaft[128];
     /** ... with GS vib_rate, stored in c128-c135 */
-    MYFLT   ctl_val[136];
+    cs_float   ctl_val[136];
     /** program change to instr number (<=0: ignore) */
     int16   pgm2ins[128];
     /** channel pressure (0-127) */
-    MYFLT   aftouch;
+    cs_float   aftouch;
     /** pitch bend (-1 to 1) */
-    MYFLT   pchbend;
+    cs_float   pchbend;
     /** pitch bend sensitivity in semitones */
-    MYFLT   pbensens;
+    cs_float   pbensens;
     /** number of held (sustaining) notes */
     int16   ksuscnt;
     /** current state of sustain pedal (0: off) */
@@ -408,11 +439,11 @@ typedef struct {
     /** Number of p-fields */
     int32_t  pcnt;
     /** Event start time */
-    MYFLT   p2orig;
+    cs_float   p2orig;
     /** Length */
-    MYFLT   p3orig;
+    cs_float   p3orig;
     /** All p-fields for this event (SSTRCOD: string argument) */
-    MYFLT   *p; // dynamically-allocated
+    cs_float   *p; // dynamically-allocated
   } EVTBLK;
 
 
@@ -466,21 +497,21 @@ typedef struct {
     /* Set if instr instance is active (perfing) */
     char     actflg;
     /* Time to turn off event, in score beats */
-    double   offbet;
+    cs_double   offbet;
     /* Time to turn off event, in seconds (negative on indef/tie) */
-    double   offtim;
+    cs_double   offtim;
     /* pointer to Csound engine and API for externals */
     CSOUND  *csound;
     uint64_t kcounter;
-    MYFLT    esr, sicvt, pidsr;                  /* local sr */
-    MYFLT    onedsr;
+    cs_float    esr, sicvt, pidsr;                  /* local sr */
+    cs_float    onedsr;
     int32_t  in_cvt, out_cvt; /* resampling converter modes for in and out */
     uint32_t ksmps;     /* Instrument copy of ksmps */
-    MYFLT    ekr;                /* and of rates */
+    cs_float    ekr;                /* and of rates */
 
-    MYFLT    onedksmps, onedkr, kicvt;
+    cs_float    onedksmps, onedkr, kicvt;
     struct opds  *pds;          /* Used for jumping */
-    MYFLT    scratchpad[4];      /* Persistent data */
+    cs_float    scratchpad[4];      /* Persistent data */
 
     /* user defined opcode I/O buffers */
     void    *opcod_iobufs;
@@ -490,16 +521,35 @@ typedef struct {
                              (calculated) */
     uint32_t ksmps_no_end; /* samps left at the end for sample accuracy
                               (used by opcodes) */
-    MYFLT   *spin;         /* offset into csound->spin */
-    MYFLT   *spout;        /* offset into csound->spout, or local spout */
+    cs_float   *spin;         /* offset into csound->spin */
+    cs_float   *spout;        /* offset into csound->spout, or local spout */
     int32_t  init_done;
+    /* Incremented when this instance starts an init or reinit pass. */
+    uint64_t init_pass;
+    /* Init work can be nested or queued more than once. Only
+       instance_init_begin/finish update init_running, under
+       async_ref_spinlock. A terminal turnoff remains sticky until the
+       outermost finish publishes this instance to the performance-thread
+       handoff. free_pending transfers unlinked deletion to that handoff, and
+       RECLAIM records that deinit is complete while an async reader exits. */
+    volatile int32_t init_running;
+    volatile int32_t turnoff_pending;
+    volatile int32_t free_pending;
+    struct insds *init_turnoff_next;
     int32_t  tieflag;
     int32_t  reinitflag;
-    MYFLT    retval;
-    MYFLT   *lclbas;  /* base for variable memory pool */
+    cs_float    retval;
+    cs_float   *lclbas;  /* base for variable memory pool */
     char    *strarg;       /* string argument */
     int32_t  linked;  /* linked to instrtxt->act_instance */
     uint64_t instance_id; /* instance id number */
+    /* Background users that must finish before this instance is reused or
+       reclaimed. Increment only while a lock proves the INSDS is alive. Every
+       reuse and free path must reject a nonzero count, and a borrower must not
+       access the INSDS after its final decrement. */
+    volatile int32_t async_ref_count;
+    /* Private named storage. Use Create/QueryInstanceVariable to access it. */
+    void *instance_variables;
     /* Copy of required p-field values for quick access */
     CS_VAR_MEM  p0;
     CS_VAR_MEM  p1;
@@ -549,13 +599,15 @@ typedef struct {
    * Data for GEN01
    */
   typedef struct {
-    MYFLT   gen01;
-    MYFLT   ifilno;
-    MYFLT   iskptim;
-    MYFLT   iformat;
-    MYFLT   channel;
-    MYFLT   sample_rate;
+    cs_float   gen01;
+    cs_float   ifilno;
+    cs_float   iskptim;
+    cs_float   iformat;
+    cs_float   channel;
+    cs_float   sample_rate;
     char    strarg[SSTRSIZ];
+    int32_t deferred_length;
+    int32_t deferred_guardreq;
   } GEN01ARGS;
 
 
@@ -572,9 +624,9 @@ typedef struct {
     /** 2^lobits - 1 */
     int32    lomask;
     /** 1 / 2^lobits */
-    MYFLT   lodiv;
+    cs_float   lodiv;
     /** LOFACT * (table_sr / orch_sr), cpscvt = cvtbas / base_freq */
-    MYFLT   cvtbas, cpscvt;
+    cs_float   cvtbas, cpscvt;
     /** sustain loop mode (0: none, 1: forward, 2: forward and backward) */
     int16   loopmode1;
     /** release loop mode (0: none, 1: forward, 2: forward and backward) */
@@ -590,15 +642,15 @@ typedef struct {
     /** table number */
     int32    fno;
     /** sampling rate */
-    MYFLT   sr;
+    cs_float   sr;
     /** args  */
-    MYFLT *args;
+    cs_float *args;
     /** arg count */
     int32_t argcnt;
     /** GEN01 parameters */
     GEN01ARGS gen01args;
-    /** table data (flen + 1 MYFLT values) */
-    MYFLT   *ftable;
+    /** table data (flen + 1 cs_float values) */
+    cs_float   *ftable;
   } FUNC;
 
   /**
@@ -648,7 +700,7 @@ typedef struct {
     /** file length in sample frames  */
     size_t          nFrames;
     /** sample rate in Hz             */
-    double          sampleRate;
+    cs_double          sampleRate;
     /** number of channels            */
     int32_t             nChannels;
     /** AE_SHORT, AE_FLOAT, etc.      */
@@ -665,17 +717,17 @@ typedef struct {
      */
     int32_t             loopMode;
     /** playback start offset frames  */
-    double          startOffs;
+    cs_double          startOffs;
     /** loop start (sample frames)    */
-    double          loopStart;
+    cs_double          loopStart;
     /** loop end (sample frames)      */
-    double          loopEnd;
+    cs_double          loopEnd;
     /** base frequency (in Hz)        */
-    double          baseFreq;
+    cs_double          baseFreq;
     /** amplitude scale factor        */
-    double          scaleFac;
+    cs_double          scaleFac;
     /** interleaved sample data       */
-    MYFLT           data[1];
+    cs_float           data[1];
   } SNDMEMFILE;
 
 /**
@@ -692,7 +744,7 @@ typedef struct pvx_memfile_ {
   int32_t winsize;
   int32_t wintype;
   int32_t chans;
-  MYFLT srate;
+  cs_float srate;
 } PVOCEX_MEMFILE;
 
 /**@}*/
@@ -705,7 +757,7 @@ typedef struct pvx_memfile_ {
 typedef struct _FFT_SETUP {
   int32_t N, M;
   void *setup;
-  MYFLT *buffer;
+  cs_float *buffer;
   int32_t lib;
   int32_t d;
   int32_t p2;
@@ -735,8 +787,8 @@ typedef struct _FFT_SETUP {
 #define ORTXT h.optext->t
 #define INOCOUNT ORTXT.inArgCount
 #define OUTOCOUNT ORTXT.outArgCount
-#define CURTIME (((double)csound->icurTimeSamples) / ((double)csound->esr))
-#define CURTIME_inc (((double)csound->ksmps) / ((double)csound->esr))
+#define CURTIME (((cs_double)csound->icurTimeSamples) / ((cs_double)csound->esr))
+#define CURTIME_inc (((cs_double)csound->ksmps) / ((cs_double)csound->esr))
 
 /**@}*/
 /** @name Macros to check for arg types */
@@ -756,15 +808,15 @@ typedef struct _FFT_SETUP {
 /**
  * Phase modulo-1 for oscillators
  */
-static inline MYFLT PHMOD1(MYFLT p) {
+static inline cs_float PHMOD1(cs_float p) {
   return p < 0 ? p - (int64_t) (p-1) : p - (uint64_t)p;
 }
 
 /**
  * Binary positive power function
  */
-static inline double intpow1(double x, int32_t n) {
-  double ans = 1.;
+static inline cs_double intpow1(cs_double x, int32_t n) {
+  cs_double ans = 1.;
   while (n != 0) {
     if (n & 1)
       ans = ans * x;
@@ -777,7 +829,7 @@ static inline double intpow1(double x, int32_t n) {
   /**
  * Binary power function
  */
-static inline double intpow(MYFLT x, int32_t n) {
+static inline cs_double intpow(cs_float x, int32_t n) {
   if (n < 0) {
     n = -n;
     x = 1. / x;
@@ -796,11 +848,11 @@ static inline int32_t byte_order(void) {
   /**
    * checks for string code in p-fields
    */
-  static inline int32_t isstrcod(MYFLT xx){
+  static inline int32_t isstrcod(cs_float xx){
 #ifdef USE_DOUBLE
     int32_t sel = (byte_order()+1)&1;
     union {
-      double d;
+      cs_double d;
       int32_t i[2];
     } z;
     z.d = xx;
@@ -821,7 +873,7 @@ static inline int32_t byte_order(void) {
 /**
  * Returns true if argument is a string code
  */
-static inline int32_t IsStringCode(MYFLT f) {
+static inline int32_t IsStringCode(cs_float f) {
   return isstrcod(f);
 }
 
@@ -916,8 +968,8 @@ static inline int32_t GetReleaseFlag(void *p) {
  * was called. The return value may be negative if the note has indefinite
  * duration.
  */
-static inline double GetOffTime(OPDS *p) {
-  return (double)p->insdshead->offtim;
+static inline cs_double GetOffTime(OPDS *p) {
+  return (cs_double)p->insdshead->offtim;
 }
 
 /**
@@ -967,7 +1019,7 @@ static inline uint32_t GetKsmpsOffset(OPDS *p) {
  * Returns the local sr of instrument/UDO containing opcode p.
  * This is an alternative to the macro CS_ESR.
  */
-static inline MYFLT GetLocalSr(OPDS *p) {
+static inline cs_float GetLocalSr(OPDS *p) {
   return p->insdshead->esr;
 }
 
@@ -975,7 +1027,7 @@ static inline MYFLT GetLocalSr(OPDS *p) {
  * Returns the local kr of instrument/UDO containing opcode p.
  * This is an alternative to the macro CS_EKR.
  */
-static inline MYFLT GetLocalKr(OPDS *p) {
+static inline cs_float GetLocalKr(OPDS *p) {
   return p->insdshead->ekr;
 }
 
@@ -1037,12 +1089,12 @@ typedef struct _CSOUND_UTIL {
   int32_t (*SetUtilityDescription)(CSOUND *, const char *utilName,
                                    const char *utilDesc);
   const char *(*GetUtilityDescription)(CSOUND *, const char *utilName);
-  void (*SetUtilSr)(CSOUND *, MYFLT);
+  void (*SetUtilSr)(CSOUND *, cs_float);
   void (*SetUtilNchnls)(CSOUND *, int32_t);
-  void *(*SndinGetSetSA)(CSOUND *, char *, void *, MYFLT *, MYFLT *, MYFLT *,
+  void *(*SndinGetSetSA)(CSOUND *, char *, void *, cs_float *, cs_float *, cs_float *,
                          int32_t);
   void *(*SndinGetSet)(CSOUND *, void *);
-  int32_t (*Sndin)(CSOUND *, void *, MYFLT *, int32_t, void *);
+  int32_t (*Sndin)(CSOUND *, void *, cs_float *, int32_t, void *);
 } CSOUND_UTIL;
 
 /* The definitions and declarations in this header
@@ -1064,6 +1116,8 @@ typedef struct _CSOUND_UTIL {
  * New functions only need to be added here if
  * they are required by plugins.
  */
+#include "csound_structs.h"
+
 struct CSOUND_ {
 
   /** @name Attributes */
@@ -1073,9 +1127,9 @@ struct CSOUND_ {
   /** Get number of input channels */
   uint32_t (*GetNchnls_i)(CSOUND *);
   /** Get max peak amp */
-  MYFLT (*Get0dBFS)(CSOUND *);
+  cs_float (*Get0dBFS)(CSOUND *);
   /** Get reference tuning */
-  MYFLT (*GetA4)(CSOUND *);
+  cs_float (*GetA4)(CSOUND *);
   /** Get current tie flag */
   int32_t (*GetTieFlag)(CSOUND *);
   /** Get current reinit flag */
@@ -1092,14 +1146,17 @@ struct CSOUND_ {
   long (*GetInputBufferSize)(CSOUND *);
   long (*GetOutputBufferSize)(CSOUND *);
   int32_t (*GetDebug)(CSOUND *);
-  int32_t (*GetSizeOfMYFLT)(void);
+  union {
+    int32_t (*GetSizeOfCsFloat)(void);
+    int32_t (*GetSizeOfMYFLT)(void); /* CS7 compatibility name. */
+  };
   const OPARMS *(*GetOParms)(CSOUND *);
   const char *(*GetEnv)(CSOUND *, const char *name);
-  MYFLT (*GetSystemSr)(CSOUND *, MYFLT);
+  cs_float (*GetSystemSr)(CSOUND *, cs_float);
   /* Get engine sampling rate */
-  MYFLT   (*GetEngineSr) (CSOUND *csound);
+  cs_float   (*GetEngineSr) (CSOUND *csound);
   /* Get engine control rate */
-  MYFLT   (*GetEngineKr) (CSOUND *csound);
+  cs_float   (*GetEngineKr) (CSOUND *csound);
   /* Get engine kcounter value */
   uint64_t (*GetEngineKcounter) (CSOUND *csound);
   /**@}*/
@@ -1113,9 +1170,9 @@ struct CSOUND_ {
 
   /** @name Events and Score */
   /**@{ */
-  void (*Event)(CSOUND *, int32_t, const MYFLT *, int32_t);
-  MYFLT (*GetScoreOffsetSeconds)(CSOUND *);
-  void (*SetScoreOffsetSeconds)(CSOUND *, MYFLT);
+  void (*Event)(CSOUND *, int32_t, const cs_float *, int32_t);
+  cs_float (*GetScoreOffsetSeconds)(CSOUND *);
+  void (*SetScoreOffsetSeconds)(CSOUND *, cs_float);
   void (*RewindScore)(CSOUND *);
   void (*InputMessage)(CSOUND *, const char *message__);
   int32_t (*ReadScore)(CSOUND *, const char *);
@@ -1135,7 +1192,7 @@ struct CSOUND_ {
 
   /** @name Arguments and Types */
   /**@{ */
-  char *(*GetArgString)(CSOUND *, MYFLT);
+  char *(*GetArgString)(CSOUND *, cs_float);
   int32 (*StringArg2Insno)(CSOUND *, void *p, int32_t is_string);
   char *(*StringArg2Name)(CSOUND *, char *, void *, const char *, int32_t);
   const CS_TYPE *(*GetType)(CSOUND *csound, const char *type);
@@ -1164,8 +1221,18 @@ struct CSOUND_ {
   int32_t (*FTCreate)(CSOUND *, FUNC **, const EVTBLK *, int32_t);
   int32_t (*FTAlloc)(CSOUND *, int32_t tableNum, int32_t len);
   int32_t (*FTDelete)(CSOUND *, int32_t tableNum);
-  FUNC *(*FTFind)(CSOUND *, MYFLT *argp);
+  FUNC *(*FTFind)(CSOUND *, cs_float *argp);
   void *(*GetNamedGens)(CSOUND *);
+  int32_t (*GetTableArgs)(CSOUND *, cs_float **, int32_t);
+  /**@}*/
+
+  /** @name Instance variables */
+  /**@{ */
+  /** Create zero-filled named storage local to an instrument instance. */
+  int32_t (*CreateInstanceVariable)(CSOUND *, INSDS *owner,
+                                     const char *name, size_t nbytes);
+  /** Return instance storage, or NULL for a missing name or invalid owner. */
+  void *(*QueryInstanceVariable)(CSOUND *, const INSDS *owner, const char *name);
   /**@}*/
 
   /** @name Global and config variable manipulation */
@@ -1190,27 +1257,27 @@ struct CSOUND_ {
   /** @name FFT support */
   /**@{ */
   void *(*RealFFTSetup)(CSOUND *csound, int32_t FFTsize, int32_t d);
-  void (*RealFFT)(CSOUND *csound, void *p, MYFLT *sig);
-  MYFLT (*GetInverseRealFFTScale)(CSOUND *, int32_t FFTsize);
-  void (*ComplexFFT)(CSOUND *, MYFLT *buf, int32_t FFTsize);
-  void (*InverseComplexFFT)(CSOUND *, MYFLT *buf, int32_t FFTsize);
-  MYFLT (*GetInverseComplexFFTScale)(CSOUND *, int32_t FFTsize);
-  void (*RealFFTMult)(CSOUND *, MYFLT *outbuf, MYFLT *buf1, MYFLT *buf2,
-                      int32_t FFTsize, MYFLT scaleFac);
+  void (*RealFFT)(CSOUND *csound, void *p, cs_float *sig);
+  cs_float (*GetInverseRealFFTScale)(CSOUND *, int32_t FFTsize);
+  void (*ComplexFFT)(CSOUND *, cs_float *buf, int32_t FFTsize);
+  void (*InverseComplexFFT)(CSOUND *, cs_float *buf, int32_t FFTsize);
+  cs_float (*GetInverseComplexFFTScale)(CSOUND *, int32_t FFTsize);
+  void (*RealFFTMult)(CSOUND *, cs_float *outbuf, cs_float *buf1, cs_float *buf2,
+                      int32_t FFTsize, cs_float scaleFac);
   void *(*DCTSetup)(CSOUND *csound, int32_t FFTsize, int32_t d);
-  void (*DCT)(CSOUND *csound, void *p, MYFLT *sig);
+  void (*DCT)(CSOUND *csound, void *p, cs_float *sig);
   /**@}*/
 
   /** @name LPC support */
   /**@{ */
-  MYFLT *(*AutoCorrelation)(CSOUND *, MYFLT *, MYFLT *, int32_t, MYFLT *,
+  cs_float *(*AutoCorrelation)(CSOUND *, cs_float *, cs_float *, int32_t, cs_float *,
                             int32_t);
   void *(*LPsetup)(CSOUND *csound, int32_t N, int32_t M);
   void (*LPfree)(CSOUND *csound, void *);
-  MYFLT *(*LPred)(CSOUND *, void *, MYFLT *);
-  MYFLT *(*LPCeps)(CSOUND *, MYFLT *, MYFLT *, int32_t, int32_t);
-  MYFLT *(*CepsLP)(CSOUND *, MYFLT *, MYFLT *, int32_t, int32_t);
-  MYFLT (*LPrms)(CSOUND *, void *);
+  cs_float *(*LPred)(CSOUND *, void *, cs_float *);
+  cs_float *(*LPCeps)(CSOUND *, cs_float *, cs_float *, int32_t, int32_t);
+  cs_float *(*CepsLP)(CSOUND *, cs_float *, cs_float *, int32_t, int32_t);
+  cs_float (*LPrms)(CSOUND *, void *);
   /**@}*/
 
   /** @name PVOC-EX system */
@@ -1272,8 +1339,8 @@ struct CSOUND_ {
   void *(*GetCurrentThreadID)(void);
   void (*Sleep)(size_t milliseconds);
   void (*InitTimerStruct)(RTCLOCK *);
-  double (*GetRealTime)(RTCLOCK *);
-  double (*GetCPUTime)(RTCLOCK *);
+  cs_double (*GetRealTime)(RTCLOCK *);
+  cs_double (*GetCPUTime)(RTCLOCK *);
   /**@}*/
 
   /** @name Circular lock-free buffer */
@@ -1283,6 +1350,8 @@ struct CSOUND_ {
   int32_t (*WriteCircularBuffer)(CSOUND *, void *, const void *, int32_t);
   int32_t (*CheckCircularBuffer)(CSOUND *, void *, int32_t);
   int32_t (*PeekCircularBuffer)(CSOUND *, void *, void *, int32_t);
+  int32_t (*GetSizeCircularBuffer)(CSOUND *, void *);
+  int32_t (*GetElementSizeCircularBuffer)(CSOUND *, void *);  
   void (*FlushCircularBuffer)(CSOUND *, void *);
   void (*DestroyCircularBuffer)(CSOUND *, void *);
   /**@}*/
@@ -1294,12 +1363,13 @@ struct CSOUND_ {
   void *(*FileOpen)(CSOUND *, void *, int32_t, const char *, void *,
                     const char *, int32_t, int32_t); /* Rename FileOpen */
   void (*NotifyFileOpened)(CSOUND *, const char *, int32_t, int32_t, int32_t);
-  int32_t (*FileClose)(CSOUND *, void *);
+  /* closeFlags is CSFILE_CLOSE_SYNC or CSFILE_CLOSE_DEFER. */
+  int32_t (*FileClose)(CSOUND *, void *, uint32_t closeFlags);
   const char *(*FileError)(CSOUND *, void *);
   void *(*FileOpenAsync)(CSOUND *, void *, int32_t, const char *, void *,
                          const char *, int32_t, int32_t, int32_t);
-  uint32_t (*ReadAsync)(CSOUND *, void *, MYFLT *, int32_t);
-  uint32_t (*WriteAsync)(CSOUND *, void *, MYFLT *, int32_t);
+  uint32_t (*ReadAsync)(CSOUND *, void *, cs_float *, int32_t);
+  uint32_t (*WriteAsync)(CSOUND *, void *, cs_float *, int32_t);
   int32_t (*FSeekAsync)(CSOUND *, void *, int32_t, int32_t);
   void (*RewriteHeader)(CSOUND *csound, void *ofd);
   SNDMEMFILE *(*LoadSoundFile)(CSOUND *, const char *, void *);
@@ -1323,10 +1393,10 @@ struct CSOUND_ {
   void *(*SndfileOpenFd)(CSOUND *csound, int32_t fd, int32_t mode,
                          SFLIB_INFO *sfinfo, int32_t close_desc);
   int32_t (*SndfileClose)(CSOUND *csound, void *);
-  int64_t (*SndfileWrite)(CSOUND *, void *, MYFLT *, int64_t);
-  int64_t (*SndfileRead)(CSOUND *, void *, MYFLT *, int64_t);
-  int64_t (*SndfileWriteSamples)(CSOUND *, void *, MYFLT *, int64_t);
-  int64_t (*SndfileReadSamples)(CSOUND *, void *, MYFLT *, int64_t);
+  int64_t (*SndfileWrite)(CSOUND *, void *, cs_float *, int64_t);
+  int64_t (*SndfileRead)(CSOUND *, void *, cs_float *, int64_t);
+  int64_t (*SndfileWriteSamples)(CSOUND *, void *, cs_float *, int64_t);
+  int64_t (*SndfileReadSamples)(CSOUND *, void *, cs_float *, int64_t);
   int64_t (*SndfileSeek)(CSOUND *, void *, int64_t, int32_t);
   int32_t (*SndfileSetString)(CSOUND *csound, void *sndfile, int32_t str_type,
                               const char *str);
@@ -1373,13 +1443,13 @@ struct CSOUND_ {
   void (*SetPlayopenCallback)(
       CSOUND *, int32_t (*playopen__)(CSOUND *, const csRtAudioParams *parm));
   void (*SetRtplayCallback)(CSOUND *,
-                            void (*rtplay__)(CSOUND *, const MYFLT *outBuf,
+                            void (*rtplay__)(CSOUND *, const cs_float *outBuf,
                                              int32_t nbytes));
   void (*SetRecopenCallback)(CSOUND *,
                              int32_t (*recopen__)(CSOUND *,
                                                   const csRtAudioParams *parm));
   void (*SetRtrecordCallback)(CSOUND *,
-                              int32_t (*rtrecord__)(CSOUND *, MYFLT *inBuf,
+                              int32_t (*rtrecord__)(CSOUND *, cs_float *inBuf,
                                                     int32_t nbytes));
   void (*SetRtcloseCallback)(CSOUND *, void (*rtclose__)(CSOUND *));
   void (*SetAudioDeviceListCallback)(
@@ -1426,7 +1496,7 @@ struct CSOUND_ {
   /**@}*/
   /** @name Displays & graphs support */
   /**@{ */
-  void (*SetDisplay)(CSOUND *, WINDAT *, MYFLT *, int32, char *, int32_t,
+  void (*SetDisplay)(CSOUND *, WINDAT *, cs_float *, int32, char *, int32_t,
                      char *);
   void (*Display)(CSOUND *, WINDAT *);
   int32_t (*DeinitDisplay)(CSOUND *);
@@ -1448,15 +1518,15 @@ struct CSOUND_ {
   /* access functions used in csound utilities */
   const CSOUND_UTIL *(*GetUtility)(CSOUND *csound);
   /* Fast power of two function from a precomputed table */
-  MYFLT (*Pow2)(CSOUND *, MYFLT a);
-  /* String localisation */
-#if defined(__CUDACC__) || defined(__MACH__)
+  cs_float (*Pow2)(CSOUND *, cs_float a);
+  /* String localisation; preserve printf format checking through Str(). */
+#if defined(__CUDACC__)
   char *(*LocalizeString)(const char *);
 #else
   char *(*LocalizeString)(const char *)__attribute__((format_arg(1)));
 #endif
   /* String conversion */
-  double (*Strtod)(char *nptr, char **);
+  cs_double (*Strtod)(char *nptr, char **);
   /* String formatted printing */
   int32_t (*Sprintf)(char *str, const char *format, ...);
   /* String formatted scanning */
@@ -1465,11 +1535,21 @@ struct CSOUND_ {
   int32_t (*Deprecate)(CSOUND *csound, char *name,
                        char *o, char *i, int32_t deprec);
   /**@}*/
+  /** @name Arrays & Structs */
+  /**@{ */
+  int32_t (*ArrayPrepareWrite)(CSOUND *, ARRAYDAT *, INSDS *, int32_t);
+  int32_t (*ArrayPrepareOpcodeWrite)(CSOUND *, ARRAYDAT *, OPDS *, int32_t,
+                                     const char *);
+  int32_t (*ArrayEnsureCapacity)(CSOUND *, ARRAYDAT *, size_t, INSDS *);
+  const CS_TYPE *(*RegisterStruct)(CSOUND *, const char *,
+                                    const CSOUND_STRUCT_MEMBER *, size_t);
+  /**@}*/
+
   /** @name Placeholders
-      To allow the API to grow while maintining backward binary compatibility.
+      To allow the API to grow while maintaining backward binary compatibility.
    */
   /**@{ */
-  SUBR dummyfn_2[50];
+  SUBR dummyfn_2[45];
   /**@}*/
 #ifdef __BUILDING_LIBCSOUND
   /* ------- private data (not to be used by hosts or externals) ------- */
@@ -1517,9 +1597,9 @@ struct CSOUND_ {
   SUBR last_callback_;
   /* these are not saved on RESET */
   int32_t (*playopen_callback)(CSOUND *, const csRtAudioParams *parm);
-  void (*rtplay_callback)(CSOUND *, const MYFLT *outBuf, int32_t nbytes);
+  void (*rtplay_callback)(CSOUND *, const cs_float *outBuf, int32_t nbytes);
   int32_t (*recopen_callback)(CSOUND *, const csRtAudioParams *parm);
-  int32_t (*rtrecord_callback)(CSOUND *, MYFLT *inBuf, int32_t nbytes);
+  int32_t (*rtrecord_callback)(CSOUND *, cs_float *inBuf, int32_t nbytes);
   void (*rtclose_callback)(CSOUND *);
   int32_t (*audio_dev_list_callback)(CSOUND *, CS_AUDIODEVICE *, int32_t);
   int32_t (*midi_dev_list_callback)(CSOUND *, CS_MIDIDEVICE *, int32_t);
@@ -1530,10 +1610,12 @@ struct CSOUND_ {
                                       const char *str);
   void (*spinrecv)(CSOUND *);
   void (*spoutran)(CSOUND *);
-  int32_t (*audrecv)(CSOUND *, MYFLT *, int32_t);
-  void (*audtran)(CSOUND *, const MYFLT *, int32_t);
+  int32_t (*audrecv)(CSOUND *, cs_float *, int32_t);
+  void (*audtran)(CSOUND *, const cs_float *, int32_t);
   void *hostdata;
   char *orchname, *scorename;
+  int32_t commandLineArgCount;
+  char **commandLineArgs;
   CORFIL *orchstr, *scorestr;
   OPDS *ids;                /* used by init loops */
   ENGINE_STATE engineState; /* current Engine State merged after
@@ -1546,20 +1628,20 @@ struct CSOUND_ {
   uint32_t nchnls;
   int32_t inchnls;
   uint64_t kcounter, global_kcounter;
-  MYFLT esr;
-  MYFLT ekr;
+  cs_float esr;
+  cs_float ekr;
   /** current time in seconds, inc. per kprd */
   int64_t icurTimeSamples; /* Current time in samples */
-  double curTime_inc;
+  cs_double curTime_inc;
   /** start time of current section    */
-  double timeOffs, beatOffs;
+  cs_double timeOffs, beatOffs;
   /** current time in beats, inc per kprd */
-  double curBeat, curBeat_inc;
+  cs_double curBeat, curBeat_inc;
   /** beat time = 60 / tempo           */
   int64_t ibeatTime; /* Beat time in samples */
   EVTBLK *currevent;
   INSDS *curip;
-  MYFLT cpu_power_busy;
+  cs_float cpu_power_busy;
   char *xfilename;
   int32_t peakchunks;
   int32_t keep_tmp;
@@ -1571,9 +1653,9 @@ struct CSOUND_ {
   FILE *scfp;
   CORFIL *scstr;
   FILE *oscfp;
-  MYFLT maxamp[MAXCHNLS];
-  MYFLT smaxamp[MAXCHNLS];
-  MYFLT omaxamp[MAXCHNLS];
+  cs_float maxamp[MAXCHNLS];
+  cs_float smaxamp[MAXCHNLS];
+  cs_float omaxamp[MAXCHNLS];
   uint32 maxpos[MAXCHNLS], smaxpos[MAXCHNLS], omaxpos[MAXCHNLS];
   FILE *scorein;
   FILE *scoreout;
@@ -1585,25 +1667,25 @@ struct CSOUND_ {
   RTCLOCK *csRtClock;
   int32_t strsmax;
   char **strsets;
-  MYFLT *spin;
-  MYFLT *spout;
-  MYFLT *spout_tmp;
+  cs_float *spin;
+  cs_float *spout;
+  cs_float *spout_tmp;
   int32_t nspin;
   int32_t nspout;
-  MYFLT *auxspin;
+  cs_float *auxspin;
   OPARMS *oparms;
   /** reserve space for up to MIDIMAXPORTS MIDI devices */
   MCHNBLK *m_chnbp[MIDIMAXPORTS * 16];
   int32_t dither_output;
-  MYFLT onedsr, sicvt;
-  MYFLT tpidsr, pidsr, mpidsr, mtpdsr;
-  MYFLT onedksmps;
-  MYFLT onedkr;
-  MYFLT kicvt;
+  cs_float onedsr, sicvt;
+  cs_float tpidsr, pidsr, mpidsr, mtpdsr;
+  cs_float onedksmps;
+  cs_float onedkr;
+  cs_float kicvt;
   int32_t reinitflag;
   int32_t tieflag;
-  MYFLT e0dbfs, dbfs_to_float;
-  double A4;
+  cs_float e0dbfs, dbfs_to_float;
+  cs_double A4;
   void *rtRecord_userdata;
   void *rtPlay_userdata;
   jmp_buf exitjmp;
@@ -1620,8 +1702,6 @@ struct CSOUND_ {
   int32_t csoundIsScorePending_;
   int64_t advanceCnt;
   int32_t initonly;
-  int32_t evt_poll_cnt;
-  int32_t evt_poll_maxcnt;
   int32_t Mforcdecs, Mxtroffs, MTrkend;
   OPCODINFO *opcodeInfo;
   FUNC **flist;
@@ -1630,8 +1710,8 @@ struct CSOUND_ {
   int32_t genmax;
   CS_HASH_TABLE *namedGlobals;
   CS_HASH_TABLE *cfgVariableDB;
-  double prvbt, curbt, nxtbt;
-  double curp2, nxtim;
+  cs_double prvbt, curbt, nxtbt;
+  cs_double curp2, nxtim;
   int64_t cyclesRemaining;
   EVTBLK evt;
   void *memalloc_db;
@@ -1647,7 +1727,7 @@ struct CSOUND_ {
   /* persistent macros */
   MACRO *orc_macros;
   /* Statics from express.c */
-  MYFLT *gbloffbas; /* was static in oload.c */
+  cs_float *gbloffbas; /* was static in oload.c */
   void *file_io_thread;
   int32_t file_io_start;
   void *file_io_threadlock;
@@ -1656,8 +1736,12 @@ struct CSOUND_ {
   int32_t event_insert_loop;
   void *init_pass_threadlock;
   void *API_lock;
+  void *array_storage_lock;
+  /* Serializes only structured-array sidecar discovery and reference changes.
+     Allocation and element copying happen after this lock is released. */
+  spin_lock_t array_storage_spinlock;
   spin_lock_t spoutlock, spinlock;
-  spin_lock_t memlock, spinlock1;
+  spin_lock_t memlock, spinlock1, open_files_lock;
   char *delayederrormessages;
   void *printerrormessagesflag;
   struct sread__ sread;
@@ -1670,19 +1754,18 @@ struct CSOUND_ {
   char *sstrbuf;
   int32_t enableMsgAttr; /* csound.c */
   int32_t sampsNeeded;
-  MYFLT csoundScoreOffsetSeconds_;
+  cs_float csoundScoreOffsetSeconds_;
   int32_t inChar_;
   int32_t isGraphable_;
-  int32_t delayr_stack_depth; /* ugens6.c */
-  void *first_delayr;
-  void *last_delayr;
   int32 revlpsiz[6];
   int32 revlpsum;
-  double rndfrac; /* aops.c */
-  MYFLT *logbase2;
+  cs_double rndfrac; /* aops.c */
+  cs_float *logbase2;
   NAMES *omacros, *smacros;
   void *namedgen;   /* fgens.c */
   void *open_files; /* fileopen.c */
+  void *retired_files; /* nodes awaiting file I/O thread reclamation */
+  uint64_t file_io_pass;
   void *searchPathCache;
   CS_HASH_TABLE *sndmemfiles;
   void *reset_list;
@@ -1717,9 +1800,6 @@ struct CSOUND_ {
   char *SF_id_date;
   void *utility_db;
   int16 *isintab; /* ugens3.c */
-  void *lprdaddr; /* ugens5.c */
-  int32_t currentLPCSlot;
-  int32_t max_lpc_slot;
   CS_HASH_TABLE *chn_db;
   int32_t opcodedirWasOK;
   int32_t disable_csd_options;
@@ -1728,7 +1808,7 @@ struct CSOUND_ {
   int32_t ugens4_rand_16;
   int32_t ugens4_rand_15;
   void *schedule_kicked;
-  MYFLT *disprep_fftcoefs;
+  cs_float *disprep_fftcoefs;
   void *winEPS_globals;
   OPARMS oparms_;
   REMOT_BUF SVrecvbuf; /* RM: rt_evt input Communications buffer */
@@ -1762,8 +1842,8 @@ struct CSOUND_ {
   int32_t strsiz;       /* length of current strings space */
   FUNC *sinetable;      /* A useful table */
   int32_t sinelength;   /* Size of table */
-  MYFLT *UNUSEDP;       /* pow2 table */
-  MYFLT *cpsocfrc;      /* cps conv table */
+  cs_float *UNUSEDP;       /* pow2 table */
+  cs_float *cpsocfrc;      /* cps conv table */
   CORFIL *expanded_orc; /* output of preprocessor */
   CORFIL *expanded_sco; /* output of preprocessor */
   char *filedir[256];   /* for location directory */
@@ -1771,8 +1851,10 @@ struct CSOUND_ {
   int32_t jumpset;
   int32_t info_message_request;
   int32_t modules_loaded;
-  MYFLT _system_sr;
+  cs_float _system_sr;
   void *csdebug_data; /* debugger data */
+  void (*debug_cb)(CSOUND *, void *); /* per-k-cycle debug callback, set via csoundSetDebugCallback() */
+  void *debug_cb_data;               /* userdata for debug_cb */
 
   int32_t score_parser;
   int32_t print_version;
@@ -1786,8 +1868,19 @@ struct CSOUND_ {
   void *directory;
   ALLOC_DATA *alloc_queue;
   volatile unsigned long alloc_queue_items;
+  unsigned long alloc_queue_active;
   unsigned long alloc_queue_wp;
+  spin_lock_t alloc_queue_spinlock;
+  /* Realtime lock order is alloc, then instance/async-reference/event. The
+     three short registry locks must never be held while taking alloc. */
   spin_lock_t alloc_spinlock;
+  spin_lock_t instance_spinlock;
+  spin_lock_t async_ref_spinlock;
+  spin_lock_t rt_event_spinlock;
+  int32_t realtime_locks_initialized;
+  INSDS *init_turnoff_pending;
+  spin_lock_t diskin2_async_lock;
+  void *diskin2_async_state;
   EVTBLK *init_event;
   char *message_string;
   volatile unsigned long message_string_queue_items;

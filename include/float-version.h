@@ -27,7 +27,7 @@
 #ifndef FLOAT_VERSION_H
 #define FLOAT_VERSION_H
 
-#if !defined(USE_DOUBLE)
+#if !defined(USE_DOUBLE) && !defined(USE_FLOAT)
 #define USE_DOUBLE
 #endif
 
