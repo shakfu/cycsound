@@ -14,6 +14,8 @@ x86_64 release (`-DUSE_DOUBLE`) and fails as described.
 | [06](06-kill-instance-unlocks-unowned-mutex.md) | `csoundKillInstance()` unlocks `API_lock` without holding it | to file | none needed (not wrapped) |
 | [08](08-channel-creation-race.md) | Channel creation is not thread-safe | to file | none; declare host channels with `chn_*` |
 | [09](09-ugen-init-error-longjmp.md) | An opcode init error in `csoundUgenInit()` crashes the host (7.0.0) | to file | none possible; documented |
+| [10](10-append-opcode-keeps-caller-strings.md) | `csoundAppendOpcode()` keeps the caller's strings instead of copying them (7.0.0) | to file | `append_opcode()` holds the encoded strings until `reset()` |
+| [11](11-readline-host-mode-claims-stdin.md) | `readline` claims process stdin even with a host readline callback (7.0.0) | to file | none; reset the instance after `readline` |
 | [07](07-atexit-destroy-runs-host-callbacks.md) | atexit destroy runs host callbacks after host shutdown | not filed: host-side | detach callbacks in a Python `atexit` handler |
 
 File only after re-checking against the current `develop` branch.

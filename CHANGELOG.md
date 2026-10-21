@@ -126,7 +126,8 @@ Sync to Csound **7.0.0** (from beta.16).
   `readline_submit(request_id, text)`, host-side input for the `readline`
   opcode. `callback(request_id, prompt)` gets the prompt when a line request
   opens and `None` when it closes. 7.0.0 `readline` claims stdin for the whole
-  process even in this mode, so a second live instance gets an init error.
+  process even in this mode, so a second live instance gets an init error
+  (`docs/dev/issues/11-readline-host-mode-claims-stdin.md`).
 - Host-implemented realtime MIDI (`csound_rtmidi.h`), for use with
   `set_host_midi_io()`: `set_midi_in_callbacks(open, read, close)`,
   `set_midi_out_callbacks(open, write, close)`,
@@ -180,7 +181,8 @@ Sync to Csound **7.0.0** (from beta.16).
 - `append_opcode()` (C function addresses) and `append_opcodes()` (an
   `OENTRY` array) register C opcodes; `OPDS_SIZE` locates the argument
   pointers. Csound keeps the name and type-string pointers instead of copying
-  them, so `append_opcode()` holds the encoded strings until `reset()`.
+  them, so `append_opcode()` holds the encoded strings until `reset()`
+  (`docs/dev/issues/10-append-opcode-keeps-caller-strings.md`).
 - `Csound.host_data` is settable. `csoundSetHostData` itself stays
   unexposed: the C host data routes callbacks to the instance.
 - Callbacks for messages, `invalue`/`outvalue` channels and keyboard input,
