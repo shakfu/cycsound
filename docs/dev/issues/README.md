@@ -13,6 +13,7 @@ x86_64 release (`-DUSE_DOUBLE`) and fails as described.
 | [05](05-set-pvs-data-overread.md) | `csoundSetPvsData()` reads past the caller's frame | to file | write `N + 2` floats directly |
 | [06](06-kill-instance-unlocks-unowned-mutex.md) | `csoundKillInstance()` unlocks `API_lock` without holding it | to file | none needed (not wrapped) |
 | [08](08-channel-creation-race.md) | Channel creation is not thread-safe | to file | none; declare host channels with `chn_*` |
+| [09](09-ugen-init-error-longjmp.md) | An opcode init error in `csoundUgenInit()` crashes the host (7.0.0) | to file | none possible; documented |
 | [07](07-atexit-destroy-runs-host-callbacks.md) | atexit destroy runs host callbacks after host shutdown | not filed: host-side | detach callbacks in a Python `atexit` handler |
 
 File only after re-checking against the current `develop` branch.

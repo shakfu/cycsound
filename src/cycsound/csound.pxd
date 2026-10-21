@@ -6,7 +6,7 @@
 
 from libc cimport stdio
 from libc.stdint cimport (
-    int32_t, int64_t, uint32_t, uint64_t, uintptr_t, int_least64_t,
+    int16_t, int32_t, int64_t, uint32_t, uint64_t, uintptr_t, int_least64_t,
 )
 
 
@@ -66,12 +66,20 @@ cdef extern from "csound.h":
 
     # Opaque/forward-declared types.
     ctypedef struct CSOUND
-    ctypedef struct STRINGDAT
-    ctypedef struct ARRAYDAT
     ctypedef struct PVSDAT
     # Full definition in csound_type_system.h (included below).
     ctypedef struct CS_TYPE:
         char *varTypeName
+    # Opaque in csound.h; the fields come from csoundCore.h (via csdl.h).
+    ctypedef struct STRINGDAT:
+        char *data
+        size_t size
+        int32_t refcount  # 0 owned, -1 alias of another variable's buffer
+    ctypedef struct ARRAYDAT:
+        int32_t dimensions
+        int32_t *sizes
+        int32_t arrayMemberSize
+        cs_float *data
     ctypedef struct OENTRY
     ctypedef struct CS_VAR_MEM
 
@@ -311,6 +319,12 @@ cdef extern from "csound.h":
     int32 csoundGetInstrNumber(CSOUND *, const char *name) nogil
     void csoundKeyPress(CSOUND *, char c) nogil
     int32_t csoundReadlinePushText(CSOUND *, const char *text) nogil
+    ctypedef void (*readlineCallback_t)(CSOUND *csound, void *userData,
+                                        uint32_t requestId,
+                                        const char *prompt) noexcept nogil
+    void csoundSetReadlineCallback(CSOUND *, readlineCallback_t callback,
+                                   void *userData) nogil
+    int32_t csoundReadlineSubmit(CSOUND *, uint32_t requestId, const char *text) nogil
     int32_t csoundRegisterKeyboardCallback(
         CSOUND *,
         int32_t (*func)(void *userData, void *p, uint32_t type) noexcept nogil,
@@ -400,9 +414,172 @@ cdef extern from "csound_rtaudio.h":
     int32_t csoundPerformOutputFade(CSOUND *, uint32_t frames) nogil
 
 
+# Plugin header: full STRINGDAT/ARRAYDAT/OPDS definitions for host code that
+# indexes array channels or registers C opcodes.
+cdef extern from "csdl.h":
+    ctypedef struct OPDS:
+        pass
+
+
+cdef extern from "csound_circular_buffer.h":
+    void *csoundCreateCircularBuffer(CSOUND *, int32_t numelem, int32_t elemsize) nogil
+    int32_t csoundReadCircularBuffer(CSOUND *, void *cb, void *out, int32_t items) nogil
+    int32_t csoundPeekCircularBuffer(CSOUND *, void *cb, void *out, int32_t items) nogil
+    int32_t csoundWriteCircularBuffer(CSOUND *, void *cb, const void *inp,
+                                      int32_t items) nogil
+    void csoundFlushCircularBuffer(CSOUND *, void *cb) nogil
+    int32_t csoundCheckCircularBuffer(CSOUND *, void *cb, int32_t flag) nogil
+    int32_t csoundGetSizeCircularBuffer(CSOUND *, void *cb) nogil
+    int32_t csoundGetElementSizeCircularBuffer(CSOUND *, void *cb) nogil
+    void csoundDestroyCircularBuffer(CSOUND *, void *cb) nogil
+
+
+cdef extern from "cwindow.h":
+    cdef enum:
+        CAPSIZE
+    ctypedef struct WINDAT:
+        uintptr_t windid
+        cs_float *fdata
+        int32 npts
+        char caption[60]
+        int16_t waitflg
+        int16_t polarity
+        cs_float max
+        cs_float min
+        cs_float absmax
+        cs_float oabsmax
+        int32_t danflag
+        int32_t absflag
+
+
+# Graph display callback types; csound_graph_display.h spells them inline.
+ctypedef void (*makeGraphFunc_t)(CSOUND *, WINDAT *windat, const char *name) noexcept nogil
+ctypedef void (*drawGraphFunc_t)(CSOUND *, WINDAT *windat) noexcept nogil
+ctypedef int32_t (*exitGraphFunc_t)(CSOUND *) noexcept nogil
+
+
+cdef extern from "csound_graph_display.h":
+    int32_t csoundSetIsGraphable(CSOUND *, int32_t isGraphable) nogil
+    void csoundSetMakeGraphCallback(CSOUND *, makeGraphFunc_t func) nogil
+    void csoundSetDrawGraphCallback(CSOUND *, drawGraphFunc_t func) nogil
+    void csoundSetKillGraphCallback(CSOUND *, drawGraphFunc_t func) nogil
+    void csoundSetExitGraphCallback(CSOUND *, exitGraphFunc_t func) nogil
+
+
+# File callback types; csound_files.h spells them inline.
+ctypedef void *(*openSoundFileFunc_t)(CSOUND *, const char *path, int32_t mode,
+                                      void *sfinfo) noexcept nogil
+ctypedef stdio.FILE *(*openFileFunc_t)(CSOUND *, const char *path,
+                                       const char *mode) noexcept nogil
+ctypedef void (*fileOpenFunc_t)(CSOUND *, const char *path, int32_t type,
+                                int32_t writing, int32_t temporary) noexcept nogil
+
+
+cdef extern from "csound_files.h":
+    ctypedef struct SNDFILE_CALLBACKS:
+        pass
+    void csoundSetOpenSoundFileCallback(CSOUND *, openSoundFileFunc_t func) nogil
+    void csoundSetOpenFileCallback(CSOUND *, openFileFunc_t func) nogil
+    void csoundSetFileOpenCallback(CSOUND *, fileOpenFunc_t func) nogil
+    void csoundSetSndfileCallbacks(CSOUND *, SNDFILE_CALLBACKS *p) nogil
+
+
+# External MIDI callback types; csound_rtmidi.h spells them inline.
+ctypedef int32_t (*midiOpenFunc_t)(CSOUND *, void **userData,
+                                   const char *devName) noexcept nogil
+ctypedef int32_t (*midiReadFunc_t)(CSOUND *, void *userData,
+                                   unsigned char *buf, int32_t nBytes) noexcept nogil
+ctypedef int32_t (*midiWriteFunc_t)(CSOUND *, void *userData,
+                                    const unsigned char *buf,
+                                    int32_t nBytes) noexcept nogil
+ctypedef int32_t (*midiCloseFunc_t)(CSOUND *, void *userData) noexcept nogil
+ctypedef const char *(*midiErrorStringFunc_t)(int32_t) noexcept nogil
+ctypedef int32_t (*midiDevListFunc_t)(CSOUND *, CS_MIDIDEVICE *list,
+                                      int32_t isOutput) noexcept nogil
+
+
 cdef extern from "csound_rtmidi.h":
     void csoundSetMIDIModule(CSOUND *, const char *module) nogil
     void csoundSetHostMIDIIO(CSOUND *) nogil
+    void csoundSetExternalMidiInOpenCallback(CSOUND *, midiOpenFunc_t func) nogil
+    void csoundSetExternalMidiReadCallback(CSOUND *, midiReadFunc_t func) nogil
+    void csoundSetExternalMidiInCloseCallback(CSOUND *, midiCloseFunc_t func) nogil
+    void csoundSetExternalMidiOutOpenCallback(CSOUND *, midiOpenFunc_t func) nogil
+    void csoundSetExternalMidiWriteCallback(CSOUND *, midiWriteFunc_t func) nogil
+    void csoundSetExternalMidiOutCloseCallback(CSOUND *, midiCloseFunc_t func) nogil
+    void csoundSetExternalMidiErrorStringCallback(CSOUND *,
+                                                  midiErrorStringFunc_t func) nogil
+    void csoundSetMIDIDeviceListCallback(CSOUND *, midiDevListFunc_t func) nogil
+
+
+cdef extern from "ugen.h":
+    ctypedef struct UGEN:
+        pass
+    ctypedef struct UGEN_FACTORY:
+        pass
+    ctypedef struct UGEN_CONTEXT:
+        pass
+    ctypedef struct UGEN_GRAPH:
+        pass
+    ctypedef struct UGEN_VAR:
+        pass
+
+    ctypedef enum UGEN_ARG_TYPE:
+        UGEN_ARG_TYPE_I
+        UGEN_ARG_TYPE_K
+        UGEN_ARG_TYPE_A
+        UGEN_ARG_TYPE_S
+        UGEN_ARG_TYPE_F
+        UGEN_ARG_TYPE_UNKNOWN
+
+    ctypedef struct UGEN_OPCODE_INFO:
+        const char *opname
+        const char *outypes
+        const char *intypes
+        size_t dsblksiz
+        int32_t flags
+
+    UGEN_FACTORY *csoundUgenFactoryNew(CSOUND *) nogil
+    bint csoundUgenFactoryDelete(UGEN_FACTORY *factory) nogil
+    UGEN_CONTEXT *csoundUgenContextNew(UGEN_FACTORY *factory) nogil
+    bint csoundUgenContextDelete(UGEN_CONTEXT *context) nogil
+    bint csoundUgenSetContext(UGEN *ugen, UGEN_CONTEXT *context) nogil
+    UGEN *csoundUgenNew(UGEN_FACTORY *factory, char *opName,
+                        char *outargTypes, char *inargTypes) nogil
+    bint csoundUgenDelete(UGEN *ugen) nogil
+    UGEN_VAR *csoundUgenGetOutVar(UGEN *ugen, int32_t index) nogil
+    UGEN_VAR *csoundUgenGetInVar(UGEN *ugen, int32_t index) nogil
+    bint csoundUgenSetInputVar(UGEN *ugen, int32_t inIdx, UGEN_VAR *var) nogil
+    UGEN_VAR *csoundUgenVarNew(UGEN_FACTORY *factory, UGEN_ARG_TYPE type) nogil
+    void csoundUgenVarDelete(UGEN_VAR *var) nogil
+    UGEN_ARG_TYPE csoundUgenVarGetType(UGEN_VAR *var) nogil
+    size_t csoundUgenVarGetSize(UGEN_VAR *var) nogil
+    void csoundUgenVarSetValue(UGEN_VAR *var, cs_float value) nogil
+    cs_float csoundUgenVarGetValue(UGEN_VAR *var) nogil
+    void *csoundUgenVarGetData(UGEN_VAR *var) nogil
+    bint csoundUgenVarSetString(UGEN_VAR *var, const char *str) nogil
+    const char *csoundUgenVarGetString(UGEN_VAR *var) nogil
+    void csoundUgenSetValue(UGEN *ugen, int32_t index, cs_float value) nogil
+    cs_float csoundUgenGetValue(UGEN *ugen, int32_t index) nogil
+    bint csoundUgenSetString(UGEN *ugen, int32_t index, const char *str) nogil
+    const char *csoundUgenGetString(UGEN *ugen, int32_t index) nogil
+    int32_t csoundUgenGetInCount(UGEN *ugen) nogil
+    int32_t csoundUgenGetOutCount(UGEN *ugen) nogil
+    UGEN_ARG_TYPE csoundUgenGetInType(UGEN *ugen, int32_t index) nogil
+    UGEN_ARG_TYPE csoundUgenGetOutType(UGEN *ugen, int32_t index) nogil
+    int32_t csoundUgenInit(UGEN *ugen) nogil
+    int32_t csoundUgenPerform(UGEN *ugen) nogil
+    int32_t csoundUgenListOpcodes(UGEN_FACTORY *factory,
+                                  UGEN_OPCODE_INFO **list, int32_t *count) nogil
+    void csoundUgenFreeOpcodeList(UGEN_FACTORY *factory, UGEN_OPCODE_INFO *list) nogil
+    bint csoundUgenFindOpcode(UGEN_FACTORY *factory, const char *opname,
+                              const char *outargTypes, const char *inargTypes) nogil
+    UGEN_GRAPH *csoundUgenGraphNew(UGEN_FACTORY *factory) nogil
+    int32_t csoundUgenGraphAdd(UGEN_GRAPH *graph, UGEN *ugen) nogil
+    int32_t csoundUgenGraphInit(UGEN_GRAPH *graph) nogil
+    int32_t csoundUgenGraphPerform(UGEN_GRAPH *graph) nogil
+    bint csoundUgenGraphDelete(UGEN_GRAPH *graph) nogil
+    bint csoundUgenGraphDeleteAll(UGEN_GRAPH *graph) nogil
 
 
 cdef extern from "csPerfThread.h":

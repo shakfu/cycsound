@@ -19,6 +19,10 @@ It offers an alternative to the default ctypes-based `ctcsound.py` wrapper.
 
 - **Csound 7 host API** coverage for the common host operations (compile,
   perform, events, channels, tables, score, messages, UDP server)
+- **Host-implemented MIDI** I/O callbacks and the **unit generator API**
+  (`ugen.h`: run opcodes directly from Python)
+- **Array channels**, **circular buffers**, **graph display** and **file**
+  callbacks, and C **opcode registration**
 - **Context manager support** (calls `reset()` on exit)
 - **GIL release** for the blocking operations (compile/start/perform/reset)
 - **CLI** for common operations (play, render, check, info, eval)
@@ -26,7 +30,7 @@ It offers an alternative to the default ctypes-based `ctcsound.py` wrapper.
 
 ## Building From Source
 
-The wrapper tracks Csound **7.0.0-beta.17**. Prerequisites:
+The wrapper tracks Csound **7.0.0**. Prerequisites:
 
 - Python >= 3.10
 - macOS (Apple Silicon or Intel) or Linux (x86_64)
@@ -62,11 +66,11 @@ make sync     # initial setup
 make build    # auto-vendors the Csound 7 runtime on first build
 ```
 
-To vendor manually (or pin a different beta tag), run the script directly:
+To vendor manually (or pin a different tag), run the script directly:
 
 ```bash
-scripts/vendor_csound7.sh                 # default tag (7.0.0-beta.17)
-scripts/vendor_csound7.sh 7.0.0-beta.16   # explicit tag
+scripts/vendor_csound7.sh                 # default tag (7.0.0)
+scripts/vendor_csound7.sh 7.0.0-beta.18   # explicit tag
 ```
 
 > Windows builds still reference a system Csound 7 install in `CMakeLists.txt`

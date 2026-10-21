@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Sync to Csound **7.0.0-beta.18** (from beta.16).
+Sync to Csound **7.0.0** (from beta.16).
 
 ### Build
 
-- `scripts/vendor_csound7.sh` now defaults to the `7.0.0-beta.18` tag and
+- `scripts/vendor_csound7.sh` now defaults to the `7.0.0` tag and
   vendors on Linux as well as macOS. On Linux it stages the
   `csound-linux-minimal-x86_64` release asset as `vendor/lib/` (the shared
   library) and `vendor/plugins/` (the opcode plugins), and gives the plugins an
@@ -33,6 +33,8 @@ Sync to Csound **7.0.0-beta.18** (from beta.16).
   `cs_float` (`csound_types.h`) and re-declares `MYFLT` as a deprecated
   typedef, so the `MYFLT=double` compile definition is dropped: it expanded
   that typedef to `typedef cs_float double` and broke the build.
+- `include/` synced to the 7.0.0 headers. No wrapped signature changed;
+  `OPARMS` gains a trailing `no_deprecated_warnings` field.
 
 ### Changed
 
@@ -48,6 +50,9 @@ Sync to Csound **7.0.0-beta.18** (from beta.16).
 
 ### Fixed
 
+- `run()` returned 0 when performance failed. In 7.0.0 `csoundPerformKsmps`
+  returns a negative value on error, e.g. on re-entry from a callback during
+  a render pass. `run()` now returns that value.
 - `compile_tree()` and `udp_server_close()` deadlocked with a callback set. A
   performing thread holds `API_lock` while its callback waits for the GIL.
   `compile_tree` held the GIL while its sync merge waited for `API_lock`.
@@ -117,6 +122,67 @@ Sync to Csound **7.0.0-beta.18** (from beta.16).
   - `get_size_of_cs_float()` / `get_size_of_cs_double()`;
     `get_size_of_myflt` is kept as an alias.
   - `Params.recursion_depth`.
+- 7.0.0 host API: `Csound.set_readline_callback(callback)` and
+  `readline_submit(request_id, text)`, host-side input for the `readline`
+  opcode. `callback(request_id, prompt)` gets the prompt when a line request
+  opens and `None` when it closes. 7.0.0 `readline` claims stdin for the whole
+  process even in this mode, so a second live instance gets an init error.
+- Host-implemented realtime MIDI (`csound_rtmidi.h`), for use with
+  `set_host_midi_io()`: `set_midi_in_callbacks(open, read, close)`,
+  `set_midi_out_callbacks(open, write, close)`,
+  `set_midi_device_list_callback()` and `set_midi_error_string_hook()`. Each
+  slot takes a Python callable or a C function address. `open` returns a
+  handle object that `read`/`write`/`close` receive, so no `void **` user data
+  reaches Python. A raised exception returns -1 to Csound. The wrapper
+  re-installs the callbacks after `reset()`, which replaces them with
+  Csound's dummies.
+- Unit generator API (`ugen.h`): `Csound.ugen_factory()` returns a
+  `UgenFactory`, which creates `Ugen`, `UgenVar`, `UgenContext` and
+  `UgenGraph` objects and lists opcode entries. Each object keeps its parents
+  alive, because `csoundUgenDelete()` runs the opcode's deinit against the
+  factory's or context's state, and a wired input reads its source's memory.
+  The objects raise after `reset()`, which frees their pool memory.
+  `set_input_var()` rejects mismatched types, and `UgenVar.value` rejects
+  non-scalars: Csound checks neither, and a k source on an a input reads
+  ksmps floats from a one-float slot. `Ugen.set_in_value()`,
+  `get_out_value()`, `set_in_string()` and `get_out_string()` call the
+  `csoundUgen*Value`/`*String` index helpers directly with the same guards;
+  they avoid a `UgenVar` per call (about 45 ns vs 105 ns).
+  `UgenGraph.delete_all()` frees the graph and its Ugens immediately
+  (`csoundUgenGraphDeleteAll`), so deinit runs without waiting for the GC.
+  It refuses a Ugen that occurs twice, sits in another graph, or feeds a Ugen
+  outside the graph, since each would then use freed memory; afterwards the
+  deleted objects raise on use. `Ugen.delete()` does the same for one Ugen
+  (`csoundUgenDelete`) and refuses while any graph holds it. An opcode init error crashes the
+  process (`docs/dev/issues/09-ugen-init-error-longjmp.md`).
+- Array channels: `Csound.init_array_channel(name, type, sizes)` returns an
+  `ArrayChannel` with `type`, `sizes`, flat `get()`/`set()` for i/k/a arrays
+  and `get_string()`/`set_string()` for S arrays. Element strides come from
+  `ARRAYDAT`, so the build now includes the plugin header `csdl.h`.
+  `set_string()` refuses elements whose buffer aliases another string:
+  `csoundSetStringData()` would write into, or reallocate, memory it does not
+  own.
+- `Csound.create_circular_buffer(size, element_size)` returns a
+  `CircularBuffer` (Csound's single-reader, single-writer ring buffer) that
+  moves bytes in whole elements and exposes its `address` for C code.
+- Graph display: `set_is_graphable()` and `set_graph_callbacks(make, draw,
+  kill, exit)`. Python callbacks get a `GraphWindow` snapshot, since the
+  `WINDAT` belongs to Csound; `make()` may return the window's `windid`. The
+  wrapper re-applies both after `reset()`: reset clears the graphable flag,
+  and a `-d` run leaves no-op callbacks in the block reset preserves. Csound
+  7.0.0 never calls `kill`.
+- File callbacks: `set_file_open_callback()` (notification, with a
+  `FileType` enum), `set_open_file_callback()` and
+  `set_open_sound_file_callback()` (return a `FILE *` or sound-file handle
+  address, or None to let Csound open the file), and
+  `set_sndfile_callbacks(address)`. Csound reverts the sndfile callbacks on
+  `reset()`, so the wrapper keeps a copy of the struct and re-applies it.
+- `append_opcode()` (C function addresses) and `append_opcodes()` (an
+  `OENTRY` array) register C opcodes; `OPDS_SIZE` locates the argument
+  pointers. Csound keeps the name and type-string pointers instead of copying
+  them, so `append_opcode()` holds the encoded strings until `reset()`.
+- `Csound.host_data` is settable. `csoundSetHostData` itself stays
+  unexposed: the C host data routes callbacks to the instance.
 - Callbacks for messages, `invalue`/`outvalue` channels and keyboard input,
   at two levels:
   - Python callables, called with the GIL: `set_message_callback`,
@@ -145,8 +211,10 @@ Sync to Csound **7.0.0-beta.18** (from beta.16).
 
 ### Known gaps
 
-The following are declared in `csound.pxd` but not yet exposed to Python: the
-array channel data accessors and opcode registration.
+Declared in `csound.pxd` but not exposed: `csoundTableCopyOut`,
+`csoundScoreSort`/`csoundScoreExtract` (`FILE *` arguments), `csoundMessageV`
+(`va_list`), `csoundSetDefaultMessageCallback`, and `csoundGetChannelVarType`
+(`get_channel_var_type_name()` returns the same name).
 
 ## [0.2.0]
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# vendor_csound7.sh - Download and vendor the Csound 7 beta runtime.
+# vendor_csound7.sh - Download and vendor the Csound 7 runtime.
 #
 # The wrapper targets Csound 7, which on most systems is not the Csound that a
 # distro/Homebrew package manager installs (that is still Csound 6). To keep a
@@ -28,7 +28,7 @@
 # Usage: scripts/vendor_csound7.sh [tag]
 set -euo pipefail
 
-TAG="${1:-7.0.0-beta.18}"
+TAG="${1:-7.0.0}"
 REPO="csound/csound"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
