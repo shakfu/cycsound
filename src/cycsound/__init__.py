@@ -11,17 +11,20 @@ import sys
 # compile. The macOS framework has its opcodes built in, so this is a no-op
 # there.
 if sys.platform.startswith("linux"):
-    # Point Csound at the vendored plugin directory of a source build unless
-    # the environment already selects one.
+    # Point Csound at the plugins installed with the package (a wheel), else
+    # the vendored directory of a source build, unless the environment
+    # already selects one.
     if "OPCODE7DIR64" not in os.environ:
-        _plugins = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(
-                os.path.abspath(__file__)))),
-            "vendor", "plugins",
-        )
-        if os.path.isdir(_plugins):
-            os.environ["OPCODE7DIR64"] = _plugins
-        del _plugins
+        _here = os.path.dirname(os.path.abspath(__file__))
+        for _plugins in (
+            os.path.join(_here, "plugins"),
+            os.path.join(os.path.dirname(os.path.dirname(_here)),
+                         "vendor", "plugins"),
+        ):
+            if os.path.isdir(_plugins):
+                os.environ["OPCODE7DIR64"] = _plugins
+                break
+        del _here, _plugins
 
     _dlopenflags = sys.getdlopenflags()
     sys.setdlopenflags(_dlopenflags | os.RTLD_GLOBAL)

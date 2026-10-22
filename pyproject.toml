@@ -1,6 +1,6 @@
 [project]
 name = "cycsound"
-version = "0.2.1"
+version = "0.2.2"
 description = "Cython bindings for the Csound 7 audio synthesis library"
 authors = [
     { name = "Shakeeb Alireza", email = "shakfu@users.noreply.github.com" }
@@ -78,7 +78,11 @@ build-backend = "scikit_build_core.build"
 [tool.cibuildwheel]
 build = "cp310-* cp311-* cp312-* cp313-* cp314-* cp315-*"
 skip = "*-win32 *-manylinux_i686 *-musllinux_*"
-test-command = "python -c \"import cycsound; print(cycsound.get_version())\""
+# Run the full suite against each wheel; an import check missed the absent
+# Linux opcode plugins in 0.2.0 and 0.2.1.
+test-sources = ["tests"]
+test-requires = ["pytest"]
+test-command = "python -m pytest tests -q"
 build-frontend = "build"
 
 [tool.cibuildwheel.linux]
@@ -89,6 +93,9 @@ manylinux-x86_64-image = "manylinux_2_34"
 before-all = [
     "yum install -y unzip || (apt-get update && apt-get install -y unzip)",
 ]
+# The rtalsa, rtjack and pmidi plugins must use the host's audio/MIDI stack;
+# without it Csound skips those plugins and loads the rest.
+repair-wheel-command = "auditwheel repair --exclude libasound.so.2 --exclude libjack.so.0 --exclude libportmidi.so.0 -w {dest_dir} {wheel}"
 
 [tool.cibuildwheel.macos]
 # The upstream CsoundLib64 framework has a minimum target of macOS 12.0.

@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.2]
+
+### Fixed
+
+- Linux wheels now ship the Csound opcode plugins as `cycsound/plugins/`, and the package points `OPCODE7DIR64` there. 0.2.0 and 0.2.1 omitted them: `__init__.py` only looked in the source tree's `vendor/plugins`, so orchestras using plugin opcodes (`vco2` and others) failed to compile from an installed wheel. `rtalsa`, `rtjack` and `pmidi` link the host's ALSA, JACK and PortMIDI rather than bundled copies, so they match the system's audio stack.
+- cibuildwheel runs the full test suite against each wheel instead of an import check, which passed on the broken wheels.
+
 ## [0.2.1]
 
 - Release includes CI changes otherwise no change from 0.2.0

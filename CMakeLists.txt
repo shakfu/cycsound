@@ -191,3 +191,10 @@ endif()
 
 # Install the extension module
 install(TARGETS _core DESTINATION cycsound)
+
+# Linux opcodes are external plugins; ship them with the package.
+if(UNIX AND NOT APPLE)
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/vendor/plugins/"
+        DESTINATION cycsound/plugins
+        FILES_MATCHING PATTERN "*.so")
+endif()
