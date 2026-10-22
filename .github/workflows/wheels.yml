@@ -64,6 +64,27 @@ jobs:
           name: sdist
           path: dist/*.tar.gz
 
+  # One download with every wheel and the sdist. Runs when some builds fail,
+  # so the successful ones are still downloadable.
+  collect:
+    name: Collect distributions
+    needs: [build_wheels, build_sdist]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - run: ls -l dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cycsound-dist
+          path: dist/*
+          if-no-files-found: error
+
   publish:
     name: Publish to PyPI
     needs: [build_wheels, build_sdist]
