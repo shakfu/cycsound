@@ -1,6 +1,6 @@
 [project]
 name = "cycsound"
-version = "0.2.0"
+version = "0.2.1"
 description = "Cython bindings for the Csound 7 audio synthesis library"
 authors = [
     { name = "Shakeeb Alireza", email = "shakfu@users.noreply.github.com" }
