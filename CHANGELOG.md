@@ -40,7 +40,8 @@ Sync to Csound **7.0.0** (from beta.16).
   `libcsound64.so` needs `GLIBC_2.29`. Windows CI installs the 7.0.0 release
   (choco ships 6.17), and `delvewheel` bundles `csound64.dll`. `macos-13`
   (retired) is replaced by `macos-15-intel`. cibuildwheel settings now live
-  only in `pyproject.toml`.
+  only in `pyproject.toml`. The wheel workflow runs on every branch push;
+  tag pushes, and so PyPI publishing, stay off.
 
 ### Changed
 
