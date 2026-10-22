@@ -16,37 +16,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-13, macos-14, windows-latest]
+        # macos-13 is retired; macos-15-intel builds the x86_64 wheels.
+        os: [ubuntu-latest, macos-15-intel, macos-14, windows-latest]
 
     steps:
       - uses: actions/checkout@v7
 
       # Linux and macOS builds vendor the Csound 7 release binaries during
-      # the CMake configure step (scripts/vendor_csound7.sh), so no system
-      # Csound install is needed -- and a distro/Homebrew package would be
-      # Csound 6, whose host API this wrapper does not target.
+      # the CMake configure step (scripts/vendor_csound7.sh). Package managers
+      # (apt, Homebrew, choco) still ship Csound 6, which this wrapper does not
+      # target. cibuildwheel settings live in pyproject.toml.
       - name: Install Csound 7 (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          choco install csound -y
+          $zip = Join-Path $env:RUNNER_TEMP csound.zip
+          $dir = Join-Path $env:RUNNER_TEMP csound
+          Invoke-WebRequest https://github.com/csound/csound/releases/download/7.0.0/csound-windows-7.0.0.zip -OutFile $zip
+          Expand-Archive $zip -DestinationPath $dir
+          $exe = Get-ChildItem $dir -Recurse -Filter *.exe | Select-Object -First 1
+          # Inno Setup installer; pin the path CMakeLists.txt expects.
+          Start-Process $exe.FullName -Wait -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/DIR="C:\Program Files\Csound7_x64"'
+          Get-ChildItem 'C:\Program Files\Csound7_x64' -Recurse -Include csound64.*,csound.h | Select-Object FullName
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.1
-        env:
-          # Build for Python 3.10-3.14
-          CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-*"
-          # Skip 32-bit builds and musl Linux
-          CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux_*"
-          # The Csound 7 release binaries are fetched by the build itself;
-          # make sure the tools the vendoring script needs are present.
-          CIBW_BEFORE_ALL_LINUX: |
-            yum install -y unzip || (apt-get update && apt-get install -y unzip)
-          # Install build dependencies
-          CIBW_BUILD_FRONTEND: "build"
-          # Test the built wheel
-          CIBW_TEST_COMMAND: "python -c \"import cycsound; print(cycsound.get_version())\""
-          # macOS deployment target
-          MACOSX_DEPLOYMENT_TARGET: "10.15"
 
       - uses: actions/upload-artifact@v7
         with:

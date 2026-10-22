@@ -35,6 +35,12 @@ Sync to Csound **7.0.0** (from beta.16).
   that typedef to `typedef cs_float double` and broke the build.
 - `include/` synced to the 7.0.0 headers. No wrapped signature changed;
   `OPARMS` gains a trailing `no_deprecated_warnings` field.
+- Wheels: the upstream 7.0.0 binaries raise the platform floors. macOS wheels
+  target 12.0, and Linux wheels build on `manylinux_2_34` because
+  `libcsound64.so` needs `GLIBC_2.29`. Windows CI installs the 7.0.0 release
+  (choco ships 6.17), and `delvewheel` bundles `csound64.dll`. `macos-13`
+  (retired) is replaced by `macos-15-intel`. cibuildwheel settings now live
+  only in `pyproject.toml`.
 
 ### Changed
 
