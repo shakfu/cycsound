@@ -43,7 +43,8 @@ jobs:
           Get-ChildItem 'C:\Program Files\Csound7_x64' -Recurse -Include csound64.*,csound.h | Select-Object FullName
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v3.3.1
+        # 4.3.1+ ships the final CPython 3.15.0.
+        uses: pypa/cibuildwheel@v4.3.4
 
       - uses: actions/upload-artifact@v7
         with:
