@@ -1,6 +1,7 @@
 """Tests for cycsound CLI."""
 
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -10,7 +11,7 @@ import pytest
 def run_cli(*args):
     """Run cycsound CLI and return result."""
     result = subprocess.run(
-        ["uv", "run", "cycsound", *args],
+        [sys.executable, "-m", "cycsound", *args],
         capture_output=True,
         text=True,
     )
