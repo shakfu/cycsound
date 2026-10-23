@@ -68,12 +68,16 @@ def test_graph_callbacks_reinstalled_after_reset():
 def test_file_open_notification_and_fallbacks():
     c = _instance("-d")
     notes, sound_opens = [], []
-    c.set_file_open_callback(lambda *args: notes.append(args))
+    # normpath: Csound converts "/" to "\" on Windows before calling back.
+    c.set_file_open_callback(
+        lambda path, *rest: notes.append((os.path.normpath(path), *rest)))
     c.set_open_sound_file_callback(
-        lambda path, mode, sfinfo: sound_opens.append((path, sfinfo != 0)))
+        lambda path, mode, sfinfo: sound_opens.append(
+            (os.path.normpath(path), sfinfo != 0)))
     _run(c, GEN01)
-    assert sound_opens == [(MARIMBA, True)]  # None: Csound opened it itself
-    assert notes == [(MARIMBA, FileType.AIFF, False, False)]
+    marimba = os.path.normpath(MARIMBA)
+    assert sound_opens == [(marimba, True)]  # None: Csound opened it itself
+    assert notes == [(marimba, FileType.AIFF, False, False)]
     assert c.table_length(2) > 0
 
 
