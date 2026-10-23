@@ -12,8 +12,8 @@ if(APPLE)
     # fetch it automatically (over plain HTTPS, no GitHub account required) by
     # running scripts/vendor_csound7.sh.
     set(CSOUND_FRAMEWORK "${CMAKE_SOURCE_DIR}/vendor/CsoundLib64.framework")
-    if(NOT EXISTS ${CSOUND_FRAMEWORK})
-        message(STATUS "Vendored CsoundLib64 framework not found; fetching Csound 7 beta...")
+    if(NOT EXISTS ${CSOUND_FRAMEWORK} OR NOT EXISTS "${CMAKE_SOURCE_DIR}/vendor/plugins")
+        message(STATUS "Vendored CsoundLib64 framework or plugins not found; fetching Csound 7...")
         execute_process(
             COMMAND bash "${CMAKE_SOURCE_DIR}/scripts/vendor_csound7.sh"
             RESULT_VARIABLE VENDOR_RESULT)
@@ -105,6 +105,8 @@ elseif(WIN32)
         "Root of the Csound 7 installation")
     set(CSOUND_INCLUDE_DIR "${CSOUND_ROOT}/include/csound")
     set(CSOUND_LIBRARY_DIR "${CSOUND_ROOT}/lib")
+    set(CSOUND_PLUGIN_DIR "${CSOUND_ROOT}/plugins64" CACHE PATH
+        "Directory of the Csound 7 plugin DLLs to ship")
 
     if(STATIC)
         message(FATAL_ERROR "Static linking not yet supported on Windows")
@@ -192,9 +194,14 @@ endif()
 # Install the extension module
 install(TARGETS _core DESTINATION cycsound)
 
-# Linux opcodes are external plugins; ship them with the package.
-if(UNIX AND NOT APPLE)
+# Ship the Csound plugins: the realtime audio/MIDI drivers on all platforms,
+# and on Linux the opcode library too.
+if(WIN32)
+    install(DIRECTORY "${CSOUND_PLUGIN_DIR}/"
+        DESTINATION cycsound/plugins
+        FILES_MATCHING PATTERN "*.dll")
+else()
     install(DIRECTORY "${CMAKE_SOURCE_DIR}/vendor/plugins/"
         DESTINATION cycsound/plugins
-        FILES_MATCHING PATTERN "*.so")
+        FILES_MATCHING PATTERN "*.so" PATTERN "*.dylib")
 endif()

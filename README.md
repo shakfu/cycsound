@@ -46,7 +46,8 @@ left untouched.
 - **macOS**: the release ships a `.pkg` whose `CsoundLib64.framework` has an
   absolute install name. The framework is extracted to
   `vendor/CsoundLib64.framework` and its install id is repointed at that path,
-  so nothing is written to `/Library/Frameworks`.
+  so nothing is written to `/Library/Frameworks`. The framework's driver
+  plugins (`Resources/Opcodes64`) are staged as `vendor/plugins/`.
 - **Linux**: the `linux-minimal` release ships `libcsound64.so` plus its opcode
   plugins. They are staged as `vendor/lib/` and `vendor/plugins/`, and the
   extension is built with an rpath to `vendor/lib`. That release carries no
@@ -130,32 +131,31 @@ with cycsound.Csound() as cs:
         pass  # process each k-cycle
 ```
 
-### Plugin opcodes / realtime modules
+### Plugins and realtime modules
 
-On **macOS** the built-in opcodes work out of the box, and the vendored
-framework's plugin opcodes live in
-`vendor/CsoundLib64.framework/Resources/Opcodes64`. To load them (for realtime
-audio/MIDI modules such as `rtauhal`/`portaudio`, etc.), point the instance at
-that directory:
+Csound loads plugins from the directory in `OPCODE7DIR64`. Every wheel ships
+its platform's plugins in `cycsound/plugins/`:
 
-```python
-cs = cycsound.Csound(opcodedir="vendor/CsoundLib64.framework/Resources/Opcodes64")
-```
+- **macOS**: drivers `rtauhal`, `rtpa`, `cmidi`, `pmidi`, `ipmidi`, plus `osc`,
+  `stdutil` and `deprecated`. The core opcodes are built into the framework.
+- **Windows**: drivers `rtpa`, `rtwinmm`, `rtwasapi`, `pmidi`, `ipmidi`, plus
+  `osc`, `stdutil` and `deprecated`.
+- **Linux**: the opcode library (`vco2`, `moogladder`, `diskgrain`, ...) and
+  the drivers. `rtalsa`, `rtjack` and `pmidi` load only if the host has ALSA,
+  JACK and PortMIDI.
 
-On **Linux** the release is a minimal build whose opcode library ships as
-external plugins, so most opcodes (`vco2`, `moogladder`, `diskgrain`, the
-realtime modules, ...) come from `vendor/plugins`. Two things make that work
-and both are handled by `cycsound/__init__.py` on import:
+`cycsound/__init__.py` handles this on import:
 
-- `OPCODE7DIR64` is pointed at `vendor/plugins` when it is unset and that
-  directory exists (a source build). Set the variable yourself to override.
-- The extension is loaded with `RTLD_GLOBAL`, because the plugins resolve
-  Csound symbols out of the global symbol namespace. Without it they fail to
-  register silently and orchestras using their opcodes do not compile.
+- `OPCODE7DIR64` is pointed at `cycsound/plugins` (a wheel), else
+  `vendor/plugins` (a source build), when it is unset. Set the variable
+  yourself to override.
+- On Linux the extension is loaded with `RTLD_GLOBAL`, because the plugins
+  resolve Csound symbols out of the global symbol namespace. Without it they
+  fail to register silently and orchestras using their opcodes do not compile.
 
-Note that Csound reads `OPCODE7DIR64` when the instance is created, so set it
-(or call `cycsound.set_global_env("OPCODE7DIR64", ...)`) before constructing a
-`Csound`.
+Csound reads `OPCODE7DIR64` when the instance is created, so set it (or call
+`cycsound.set_global_env("OPCODE7DIR64", ...)`) before constructing a
+`Csound`. `Csound.get_module(n)` lists the registered driver modules.
 
 ## API Reference
 

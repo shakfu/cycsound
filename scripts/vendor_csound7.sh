@@ -11,7 +11,8 @@
 # macOS: the release ships a .pkg installer whose CsoundLib64.framework has an
 #   absolute install name (/Library/Frameworks/...). The framework is extracted
 #   to vendor/CsoundLib64.framework and its install id is repointed at that
-#   vendored path so the built extension finds it at runtime.
+#   vendored path so the built extension finds it at runtime. Its driver
+#   plugins (Resources/Opcodes64) are staged as vendor/plugins/.
 #
 # Linux: the "linux-minimal" release ships libcsound64.so plus its opcode
 #   plugins. They are staged as vendor/lib/ and vendor/plugins/; CMake links
@@ -72,6 +73,22 @@ vendor_macos() {
     install_name_tool -id "${bin}" "${bin}"
     echo ">> re-signing (ad-hoc)"
     codesign --force --sign - "${bin}"
+
+    # Stage the driver plugins (rtaudio, rtmidi, osc, ...). Their links to
+    # the framework's libs/ are relative to Resources/Opcodes64; make them
+    # absolute so the staged copies resolve and delocate can bundle them.
+    echo ">> staging plugins"
+    rm -rf "${VENDOR_DIR}/plugins"
+    mkdir -p "${VENDOR_DIR}/plugins"
+    cp "${framework}"/Resources/Opcodes64/*.dylib "${VENDOR_DIR}/plugins/"
+    local so dep
+    for so in "${VENDOR_DIR}"/plugins/*.dylib; do
+        for dep in $(otool -L "${so}" | awk '/@loader_path\/.*\/libs\//{print $1}'); do
+            install_name_tool -change "${dep}" \
+                "${framework}/libs/${dep##*/}" "${so}"
+        done
+        codesign --force --sign - "${so}"
+    done
 
     echo ">> done: ${framework}"
     otool -D "${bin}" | sed -n '1,2p'

@@ -6,11 +6,12 @@
 
 - [ ] Bundle the Csound driver plugins in the macOS and Windows wheels, as 0.2.2 did on Linux.
   0.2.2 macOS wheels ship only `.dylibs/CsoundLib64`. The framework's `Resources/Opcodes64` (`librtauhal`, `librtpa`, `libpmidi`, `libcmidi`, `libipmidi`, `libosc`, `libstdutil`, `libdeprecated`) and `libs/` (`libportaudio`, `libportmidi`, `liblo`) are missing. Windows wheels lack the 8 DLLs in `plugins64`. `csound64.dll` has no audio driver of its own, so realtime audio likely falls back to the dummy module. The offline test suite cannot detect this.
-  - [ ] Confirm on macOS (below).
-  - [ ] Get the names of the 8 Windows `plugins64` DLLs (`innoextract` on `Csound7-windows_x86_64-7.0.0-7619.exe`, or log them in `wheels-windows-noplugins.yml`).
-  - [ ] Copy the plugins and their libraries into `cycsound/plugins/` (`delocate` on macOS, `delvewheel --add-path` on Windows).
-  - [ ] Set `OPCODE7DIR64` in `__init__.py` on all platforms, not only Linux. Otherwise the macOS binary falls back to `/Applications/Csound/.../Opcodes64` and may load a mismatched system install.
-  - [ ] Add a device-free test that the realtime modules are present.
+  - [x] Confirm on macOS (below). 0.2.2: `auhal` and `pa` both FAIL with the dummy module.
+  - [x] Get the names of the 8 Windows `plugins64` DLLs (`innoextract` on `Csound7-windows_x86_64-7.0.0-7619.exe`, or log them in `wheels-windows-noplugins.yml`). From the arm64 zip (innoextract 1.9 cannot read the x64 installer): `rtpa`, `rtwinmm`, `rtwasapi`, `pmidi`, `ipmidi`, `osc`, `stdutil`, `deprecated`. All import only system DLLs.
+  - [x] Copy the plugins and their libraries into `cycsound/plugins/` (`delocate` on macOS, `delvewheel --add-path` on Windows).
+  - [x] Set `OPCODE7DIR64` in `__init__.py` on all platforms, not only Linux. Otherwise the macOS binary falls back to `/Applications/Csound/.../Opcodes64` and may load a mismatched system install.
+  - [x] Add a device-free test that the realtime modules are present.
+  - [ ] Confirm on Windows CI: `test_driver_modules_registered` passes in both Windows workflows, and the x64 `plugins64` matches the arm64 list.
 
   **macOS check.** Run outside the repo, so the source build and `vendor/` are not used:
 

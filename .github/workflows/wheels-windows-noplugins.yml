@@ -1,9 +1,10 @@
 name: Build Wheels (Windows, no Csound plugins)
 
 # Copy of the Windows job in wheels.yml. The full Csound 7 install on the
-# runner could supply opcode plugins the wheel lacks, as the Linux wheels
-# did in 0.2.0 and 0.2.1. Here every Csound DLL except csound64.dll is moved
-# out of the install before building, so tests see only what the wheel ships.
+# runner could supply plugins the wheel lacks, as the Linux wheels did in
+# 0.2.0 and 0.2.1. Here every Csound DLL except csound64.dll is moved out of
+# the install before building, so tests see only what the wheel ships. The
+# build takes the plugins it bundles from the moved copy.
 on:
   push:
     branches: ["**"]
@@ -33,15 +34,14 @@ jobs:
           Start-Process $exe.FullName -Wait -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/DIR="C:\Program Files\Csound7_x64"'
           Get-ChildItem 'C:\Program Files\Csound7_x64' -Recurse -Include csound64.*,csound.h | Select-Object FullName
 
-      # The build needs only include/, lib/csound64.lib and csound64.dll,
-      # which delvewheel bundles on its own.
+      # The build needs include/, lib/csound64.lib, csound64.dll (which
+      # delvewheel bundles) and the plugins64 DLLs (installed by CMake).
       - name: Hide Csound plugins
         shell: pwsh
         run: |
           $root = 'C:\Program Files\Csound7_x64'
           $hidden = Join-Path $env:RUNNER_TEMP csound-hidden
-          $empty = Join-Path $env:RUNNER_TEMP csound-no-plugins
-          New-Item -ItemType Directory -Force $hidden, $empty | Out-Null
+          New-Item -ItemType Directory -Force $hidden | Out-Null
           $dlls = Get-ChildItem $root -Recurse -Filter *.dll | Where-Object Name -ne 'csound64.dll'
           foreach ($f in $dlls) {
             $dest = Join-Path $hidden $f.FullName.Substring($root.Length + 1)
@@ -51,7 +51,8 @@ jobs:
           Write-Host "moved $($dlls.Count) DLLs out of $root"
           $dlls | Group-Object DirectoryName | Select-Object Count, Name | Format-Table -AutoSize
           if (-not (Get-ChildItem $root -Recurse -Filter csound64.dll)) { throw "csound64.dll missing" }
-          "OPCODE7DIR64=$empty" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          $plugins = (Join-Path $hidden plugins64).Replace('\', '/')
+          "SKBUILD_CMAKE_DEFINE=CSOUND_PLUGIN_DIR=$plugins" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
 
       - name: Build wheels
         # 4.3.1+ ships the final CPython 3.15.0.
