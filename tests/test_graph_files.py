@@ -5,6 +5,8 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 import cycsound
 from cycsound import FileType
 
@@ -75,12 +77,12 @@ def test_file_open_notification_and_fallbacks():
     assert c.table_length(2) > 0
 
 
+# csound64.dll links a static CRT (/MT): no FILE* from outside it is valid there.
+@pytest.mark.skipif(sys.platform == "win32", reason="Csound uses a private static CRT")
 def test_open_file_callback_returns_file_pointer(tmp_path):
-    numbers_file = tmp_path / "numbers.txt"
-    numbers_file.write_text("1 2 3 4\n")
-    numbers = numbers_file.as_posix()
-    # The FILE* must come from the C runtime Csound links (UCRT on Windows).
-    libc = ctypes.CDLL("ucrtbase" if sys.platform == "win32" else None)
+    numbers = tmp_path / "numbers.txt"
+    numbers.write_text("1 2 3 4\n")
+    libc = ctypes.CDLL(None)
     libc.fopen.restype = ctypes.c_void_p
     libc.fopen.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     opened = []
@@ -92,7 +94,7 @@ def test_open_file_callback_returns_file_pointer(tmp_path):
     c = _instance("-d")
     c.set_open_file_callback(open_file)
     _run(c, f'gi1 ftgen 1, 0, 4, -23, "{numbers}"\ninstr 1\nendin\n')
-    assert opened == [(numbers, "r")]
+    assert opened == [(str(numbers), "r")]
     assert list(c.get_table(1)) == [1.0, 2.0, 3.0, 4.0]
 
 
