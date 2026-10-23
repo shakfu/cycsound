@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+
+- `make` re-vendors Csound when `vendor/.tag` differs from `TAG` in `scripts/vendor_csound7.sh`. It previously checked only that the library existed, so after the 7.0.0 bump a stale beta.18 `libcsound64.so` stayed in `vendor/lib` and `_core` failed to import with `undefined symbol: csoundSetReadlineCallback`.
+
 ## [0.2.2]
 
 ### Fixed

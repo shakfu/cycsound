@@ -17,9 +17,14 @@ endif
 # Default target
 all: build
 
-# Download/vendor the Csound 7 runtime if it is not already present.
-# This is an order-only prerequisite of the build/test targets, so a missing
-# (or deleted) framework is fetched via curl before anything that needs it.
+# Download/vendor the Csound 7 runtime if it is missing or its vendor/.tag
+# differs from the script's default TAG. This is an order-only prerequisite
+# of the build/test targets, so it runs before anything that needs it.
+VENDOR_TAG := $(shell sed -n 's/^TAG="[$$]{1:-\(.*\)}"/\1/p' scripts/vendor_csound7.sh)
+ifneq ($(shell cat vendor/.tag 2>/dev/null),$(VENDOR_TAG))
+.PHONY: $(VENDOR_FRAMEWORK)
+endif
+
 $(VENDOR_FRAMEWORK):
 	@scripts/vendor_csound7.sh
 

@@ -133,3 +133,6 @@ case "$(uname)" in
     Linux)  vendor_linux ;;
     *)      echo "error: unsupported platform $(uname)" >&2; exit 1 ;;
 esac
+
+# Read by the Makefile to re-vendor when TAG changes.
+printf '%s\n' "${TAG}" > "${VENDOR_DIR}/.tag"
