@@ -2,12 +2,15 @@
 
 import ctypes
 import os
+import sys
+from pathlib import Path
 
 import cycsound
 from cycsound import FileType
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-MARIMBA = os.path.join(HERE, "marimba.aif")
+# Forward slashes: orc string literals treat "\t" etc. as escapes.
+MARIMBA = Path(HERE, "marimba.aif").as_posix()
 GEN01 = f'gi2 ftgen 2, 0, 0, 1, "{MARIMBA}", 0, 0, 0\ninstr 1\nendin\n'
 
 
@@ -73,9 +76,11 @@ def test_file_open_notification_and_fallbacks():
 
 
 def test_open_file_callback_returns_file_pointer(tmp_path):
-    numbers = tmp_path / "numbers.txt"
-    numbers.write_text("1 2 3 4\n")
-    libc = ctypes.CDLL(None)
+    numbers_file = tmp_path / "numbers.txt"
+    numbers_file.write_text("1 2 3 4\n")
+    numbers = numbers_file.as_posix()
+    # The FILE* must come from the C runtime Csound links (UCRT on Windows).
+    libc = ctypes.CDLL("ucrtbase" if sys.platform == "win32" else None)
     libc.fopen.restype = ctypes.c_void_p
     libc.fopen.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     opened = []
@@ -87,7 +92,7 @@ def test_open_file_callback_returns_file_pointer(tmp_path):
     c = _instance("-d")
     c.set_open_file_callback(open_file)
     _run(c, f'gi1 ftgen 1, 0, 4, -23, "{numbers}"\ninstr 1\nendin\n')
-    assert opened == [(str(numbers), "r")]
+    assert opened == [(numbers, "r")]
     assert list(c.get_table(1)) == [1.0, 2.0, 3.0, 4.0]
 
 
