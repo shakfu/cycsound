@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - `scripts/test_wheel.py [version | --wheel PATH]` runs the current `tests/` against a PyPI release (default: latest) or a local wheel in a throwaway venv.
+- `scripts/check_rtaudio.py [module]` plays a tone to `-odac` and exits 1 if Csound falls back to its dummy audio module, which the offline test suite cannot detect.
 
 ### Fixed
 
