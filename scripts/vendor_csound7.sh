@@ -12,7 +12,10 @@
 #   absolute install name (/Library/Frameworks/...). The framework is extracted
 #   to vendor/CsoundLib64.framework and its install id is repointed at that
 #   vendored path so the built extension finds it at runtime. Its driver
-#   plugins (Resources/Opcodes64) are staged as vendor/plugins/.
+#   plugins (Resources/Opcodes64) are staged as vendor/plugins/. The libraries
+#   three of them need (PortAudio, PortMidi, liblo) are rebuilt from source
+#   into vendor/deps/: the release's copies require macOS 26.0, the rest of
+#   the framework 12.0.
 #
 # Linux: the "linux-minimal" release ships libcsound64.so plus its opcode
 #   plugins. They are staged as vendor/lib/ and vendor/plugins/; CMake links
@@ -23,8 +26,9 @@
 # The release assets are public downloads, so no GitHub account or gh CLI is
 # needed: they are fetched over plain HTTPS with curl (or wget as a fallback).
 #
-# Requires: curl or wget, unzip; plus pkgutil/install_name_tool/codesign on
-# macOS, and patchelf (optional, for the plugin rpath) on Linux.
+# Requires: curl or wget, unzip; plus pkgutil/install_name_tool/codesign,
+# cmake and a C compiler on macOS, and patchelf (optional, for the plugin
+# rpath) on Linux.
 #
 # Usage: scripts/vendor_csound7.sh [tag]
 set -euo pipefail
@@ -35,6 +39,16 @@ REPO="csound/csound"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 VENDOR_DIR="${ROOT_DIR}/vendor"
+
+# macOS plugin dependencies: name, GitHub repo, commit, archive sha256, CMake
+# source subdirectory, extra CMake arguments. The commits are those the
+# 7.0.0 release was built from (default branches on 2026-10-21).
+MACOS_TARGET="12.0"
+MACOS_DEPS=(
+    "libportmidi PortMidi/portmidi 6b51c25659965ff763e266e4d90be099b5bcb344 c714d54f6823c8a73b44aab44785539cd7398b549302e7cea2f9c740ae2ccd30 ."
+    "libportaudio PortAudio/portaudio 7c45fed9322bd86b5dd0da4547b15d9ac3b9b0ac d236b3482ca938858010dcb76b08f43b3f63a7aba9dfd465b20c446e5e5eeca3 ."
+    "liblo radarsat1/liblo 025f277275e6b81032a72dfb0b131adab80363e6 7254eab24f8ac96d9ebb4c933eb8e2704e5c61f1901e42936b90fdeed52d3eaf cmake -DWITH_TOOLS=OFF -DWITH_TESTS=OFF -DWITH_EXAMPLES=OFF -DWITH_CPP_TESTS=OFF"
+)
 
 fetch() {
     local url="$1" out="$2"
@@ -47,6 +61,44 @@ fetch() {
         echo "error: need curl or wget to download the Csound 7 release" >&2
         exit 1
     fi
+}
+
+# Build MACOS_DEPS as universal dylibs into vendor/deps with absolute
+# install names, and fail if any requires a macOS newer than MACOS_TARGET.
+build_macos_deps() {
+    local prefix="${VENDOR_DIR}/deps" cmake="${CMAKE:-cmake}"
+    local spec name repo rev sum subdir args src lib minos
+    rm -rf "${prefix}" _deps
+    mkdir -p _deps
+    for spec in "${MACOS_DEPS[@]}"; do
+        read -r name repo rev sum subdir args <<< "${spec}"
+        src="_deps/${name}"
+        fetch "https://github.com/${repo}/archive/${rev}.tar.gz" "${src}.tar.gz"
+        echo "${sum}  ${src}.tar.gz" | shasum -a 256 -c -
+        mkdir -p "${src}"
+        tar xzf "${src}.tar.gz" -C "${src}" --strip-components 1
+        # shellcheck disable=SC2086  # args is a list of flags
+        "${cmake}" -S "${src}/${subdir}" -B "${src}/build" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="${MACOS_TARGET}" \
+            -DCMAKE_INSTALL_PREFIX="${prefix}" \
+            -DCMAKE_INSTALL_NAME_DIR="${prefix}/lib" \
+            ${args}
+        "${cmake}" --build "${src}/build" --parallel
+        "${cmake}" --install "${src}/build"
+    done
+    rm -rf _deps
+
+    for lib in "${prefix}"/lib/*.dylib; do
+        [[ -L "${lib}" ]] && continue
+        for minos in $(otool -l "${lib}" | awk '/minos/{print $2}' | sort -u); do
+            if [[ "${minos}" != "${MACOS_TARGET}" ]]; then
+                echo "error: ${lib} targets macOS ${minos}, not ${MACOS_TARGET}" >&2
+                exit 1
+            fi
+        done
+    done
 }
 
 vendor_macos() {
@@ -74,9 +126,12 @@ vendor_macos() {
     echo ">> re-signing (ad-hoc)"
     codesign --force --sign - "${bin}"
 
-    # Stage the driver plugins (rtaudio, rtmidi, osc, ...). Their links to
-    # the framework's libs/ are relative to Resources/Opcodes64; make them
-    # absolute so the staged copies resolve and delocate can bundle them.
+    echo ">> building plugin dependencies for macOS ${MACOS_TARGET}"
+    build_macos_deps
+
+    # Stage the driver plugins (rtaudio, rtmidi, osc, ...). Repoint their
+    # links to the framework's libs/ at the rebuilt copies, by absolute path,
+    # so the staged plugins resolve and delocate can bundle them.
     echo ">> staging plugins"
     rm -rf "${VENDOR_DIR}/plugins"
     mkdir -p "${VENDOR_DIR}/plugins"
@@ -85,7 +140,7 @@ vendor_macos() {
     for so in "${VENDOR_DIR}"/plugins/*.dylib; do
         for dep in $(otool -L "${so}" | awk '/@loader_path\/.*\/libs\//{print $1}'); do
             install_name_tool -change "${dep}" \
-                "${framework}/libs/${dep##*/}" "${so}"
+                "$(otool -D "${VENDOR_DIR}/deps/lib/${dep##*/}" | tail -1)" "${so}"
         done
         codesign --force --sign - "${so}"
     done

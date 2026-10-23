@@ -60,8 +60,6 @@ sdist.exclude = [
     "*.egg-info",
 ]
 
-# For static builds, use: pip install . --config-settings=cmake.define.STATIC=ON
-
 [dependency-groups]
 dev = [
     "pytest>=8.0",

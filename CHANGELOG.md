@@ -6,14 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Removed
+
+- The `STATIC` CMake option and the `make release` and `make wheel-static` targets. Since the Csound 7 port, `STATIC=ON` stopped configure with a fatal error on every platform, so both targets always failed. Release wheels come from CI.
+
 ### Added
+
+- `make dist-ci [RUN=<id>]` replaces `dist/` with the `cycsound-dist` artifact of a CI run, by default the latest successful `wheels.yml` run on the current branch, and runs `twine check`.
 
 - `scripts/test_wheel.py [version | --wheel PATH]` runs the current `tests/` against a PyPI release (default: latest) or a local wheel in a throwaway venv.
 - `scripts/check_rtaudio.py [module]` plays a tone to `-odac` and exits 1 if Csound falls back to its dummy audio module, which the offline test suite cannot detect.
 
 ### Fixed
 
-- macOS and Windows wheels now ship the Csound driver plugins in `cycsound/plugins/`, and the package points `OPCODE7DIR64` there on every platform. 0.2.2 shipped only the Csound library, so `-odac` fell back to the dummy audio module with no error (`start()` returns 0). On macOS, an unset `OPCODE7DIR64` also made Csound load plugins from `/Applications/Csound`, which may be a different version. `delocate` bundles the macOS plugins' `libportaudio`, `libportmidi` and `liblo`; the Windows plugins link only system DLLs.
+- macOS and Windows wheels now ship the Csound driver plugins in `cycsound/plugins/`, and the package points `OPCODE7DIR64` there on every platform. 0.2.2 shipped only the Csound library, so `-odac` fell back to the dummy audio module with no error (`start()` returns 0). On macOS, an unset `OPCODE7DIR64` also made Csound load plugins from `/Applications/Csound`, which may be a different version. The Windows plugins link only system DLLs.
+
+  On macOS, `rtpa`, `pmidi` and `osc` link PortAudio, PortMidi and liblo. The release's copies of these require macOS 26.0, so `delocate` rejected the 12.0 wheels. `scripts/vendor_csound7.sh` rebuilds them for 12.0 from the commits the release used, with checksums, into `vendor/deps/`. Dropping the three plugins would have lost PortAudio, PortMIDI and OSC on macOS; raising the wheels' floor to 26.0 would have dropped macOS 12-15.
 - `make` re-vendors Csound when `vendor/.tag` differs from `TAG` in `scripts/vendor_csound7.sh`. It previously checked only that the library existed, so after the 7.0.0 bump a stale beta.18 `libcsound64.so` stayed in `vendor/lib` and `_core` failed to import with `undefined symbol: csoundSetReadlineCallback`.
 
 ## [0.2.2]

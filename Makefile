@@ -4,7 +4,7 @@
 # This Makefile wraps common build commands for convenience.
 # The actual build is handled by scikit-build-core via pyproject.toml
 
-.PHONY: all sync build rebuild test test-cli vendor clean distclean wheel wheel-static sdist check publish publish-test help
+.PHONY: all sync build rebuild test test-cli vendor clean distclean wheel sdist dist-ci check publish publish-test help
 
 # Vendored Csound 7 runtime (downloaded on demand by scripts/vendor_csound7.sh):
 # a CsoundLib64 framework on macOS, a shared library on Linux.
@@ -49,13 +49,11 @@ test: | $(VENDOR_FRAMEWORK)
 test-cli: | $(VENDOR_FRAMEWORK)
 	@uv run python -m pytest tests/test_cli.py -v
 
-# Build wheel (dynamic linking)
+# Build a wheel for local use. It is not repaired (delocate/auditwheel/
+# delvewheel), so it links the vendored runtime by absolute path. Release
+# wheels come from CI; see dist-ci.
 wheel:
 	@uv build --wheel
-
-# Build wheel with static Csound libraries (standalone, macOS only)
-wheel-static:
-	@uv build --wheel -C cmake.define.STATIC=ON
 
 # Build source distribution
 sdist:
@@ -63,23 +61,27 @@ sdist:
 
 # Check distribution files with twine
 check:
-	@uv run twine check dist/*
+	@uv run python -m twine check dist/*
 
-release:
-	@uv build --wheel -C cmake.define.STATIC=ON --python 3.10
-	@uv build --wheel -C cmake.define.STATIC=ON --python 3.11
-	@uv build --wheel -C cmake.define.STATIC=ON --python 3.12
-	@uv build --wheel -C cmake.define.STATIC=ON --python 3.13
-	@uv build --wheel -C cmake.define.STATIC=ON --python 3.14
-	@uv run twine check dist/*
+# Replace dist/ with the wheels and sdist of a CI run, then check them.
+# RUN defaults to the latest successful wheels.yml run on the current branch,
+# which may predate HEAD; the run's commit is printed.
+dist-ci:
+	@run="$(RUN)"; \
+	run="$${run:-$$(gh run list --workflow wheels.yml --branch "$$(git branch --show-current)" \
+		--status success -L 1 --json databaseId -q '.[0].databaseId')}"; \
+	test -n "$$run" || { echo "error: no successful wheels.yml run; set RUN=<run-id>" >&2; exit 1; }; \
+	gh run view "$$run" --json headSha,displayTitle -q '"run '"$$run"': \(.headSha[:7]) \(.displayTitle)"' && \
+	rm -rf dist && gh run download "$$run" -n cycsound-dist -D dist && ls dist
+	@uv run python -m twine check dist/*
 
 # Publish to PyPI
 publish:
-	@uv run twine upload dist/*
+	@uv run python -m twine upload dist/*
 
 # Publish to TestPyPI
 publish-test:
-	@uv run twine upload --repository testpypi dist/*
+	@uv run python -m twine upload --repository testpypi dist/*
 
 # Clean build artifacts
 clean:
@@ -105,9 +107,9 @@ help:
 	@echo "  rebuild      - Alias for build"
 	@echo "  test         - Run all tests"
 	@echo "  test-cli     - Run CLI tests only"
-	@echo "  wheel        - Build wheel distribution (dynamic linking)"
-	@echo "  wheel-static - Build wheel with static Csound (standalone, macOS)"
+	@echo "  wheel        - Build a wheel for local use (not portable)"
 	@echo "  sdist        - Build source distribution"
+	@echo "  dist-ci      - Download a CI run's wheels and sdist to dist/ (RUN=<id>)"
 	@echo "  check        - Check distribution files with twine"
 	@echo "  publish      - Publish to PyPI"
 	@echo "  publish-test - Publish to TestPyPI"

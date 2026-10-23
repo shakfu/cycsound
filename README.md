@@ -8,11 +8,11 @@ cycsound is a Cython wrapper for the [Csound](https://csound.com/) audio
 synthesis library, providing Python bindings for the Csound 7 `csound.h` C API.
 It offers an alternative to the default ctypes-based `ctcsound.py` wrapper.
 
-> **Note:** This branch targets **Csound 7** (currently in beta). Csound 7
+> **Note:** cycsound targets **Csound 7** (7.0.0), not Csound 6. Csound 7
 > reworked the host C API substantially relative to Csound 6: `csoundPerform`,
 > `csoundStop`, `csoundCleanup`, `csoundReadScore`, the `csoundScoreEvent*`
 > family, and the writable `CSOUND_PARAMS` model were all removed or replaced.
-> The Python API here mirrors the Csound 7 surface directly. See the
+> The Python API here mirrors the Csound 7 API directly. See the
 > [CHANGELOG](CHANGELOG.md) for the full migration notes.
 
 ## Features
@@ -35,6 +35,8 @@ The wrapper tracks Csound **7.0.0**. Prerequisites:
 - Python >= 3.10
 - macOS (Apple Silicon or Intel) or Linux (x86_64)
 - `curl` (or `wget`) and `unzip` to download the release binaries
+- macOS only: `cmake` and the Xcode command line tools, to build PortAudio,
+  PortMidi and liblo for the driver plugins
 - Linux only: `patchelf`, optional, to give the vendored opcode plugins an
   rpath to the vendored library
 
@@ -47,7 +49,9 @@ left untouched.
   absolute install name. The framework is extracted to
   `vendor/CsoundLib64.framework` and its install id is repointed at that path,
   so nothing is written to `/Library/Frameworks`. The framework's driver
-  plugins (`Resources/Opcodes64`) are staged as `vendor/plugins/`.
+  plugins (`Resources/Opcodes64`) are staged as `vendor/plugins/`. The
+  release's PortAudio, PortMidi and liblo require macOS 26.0, so they are
+  rebuilt for 12.0 into `vendor/deps/` from pinned, checksummed sources.
 - **Linux**: the `linux-minimal` release ships `libcsound64.so` plus its opcode
   plugins. They are staged as `vendor/lib/` and `vendor/plugins/`, and the
   extension is built with an rpath to `vendor/lib`. That release carries no
@@ -255,7 +259,26 @@ make build                  # rebuild after source changes
 make test                   # run the test suite
 make test-cli               # CLI tests only
 make vendor                 # (re)fetch the Csound 7 runtime explicitly
+make wheel                  # wheel for local use only (see below)
 ```
+
+### Releasing
+
+Release wheels are built by CI (`.github/workflows/wheels.yml`) with
+cibuildwheel, for CPython 3.10-3.15 on Linux x86_64, macOS arm64 and x86_64,
+and Windows x64. cibuildwheel runs the test suite against each wheel and
+repairs it (`auditwheel`, `delocate`, `delvewheel`) to bundle the Csound
+runtime and plugins.
+
+```bash
+make dist-ci                # dist/ <- latest successful wheels.yml run on this branch
+make dist-ci RUN=<run-id>   # or a given run
+make publish                # upload dist/ to PyPI (publish-test: TestPyPI)
+```
+
+`make dist-ci` prints the commit of the run it downloads, which may predate
+`HEAD`. `make wheel` is not repaired: it links the vendored runtime by absolute
+path and works only on the machine that built it.
 
 ## Rationale
 

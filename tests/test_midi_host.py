@@ -131,6 +131,9 @@ def test_midi_open_failure_and_error_string_hook(unraisable):
     assert any("host refused" in m for m in messages)
     assert isinstance(unraisable[0].exc_value, OSError)
     c.set_midi_error_string_hook(0)
+    # Clean up while the message callback still captures the error count.
+    c.reset()
+    assert any("1 errors in performance" in m for m in messages)
 
 
 def test_midi_device_list_callback():
