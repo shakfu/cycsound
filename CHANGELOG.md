@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- `scripts/test_wheel.py [version]` runs the current `tests/` against a PyPI wheel (default: latest) in a throwaway venv.
+- `scripts/test_wheel.py [version | --wheel PATH]` runs the current `tests/` against a PyPI release (default: latest) or a local wheel in a throwaway venv.
 
 ### Fixed
 

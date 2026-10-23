@@ -1,0 +1,63 @@
+name: Build Wheels (Windows, no Csound plugins)
+
+# Copy of the Windows job in wheels.yml. The full Csound 7 install on the
+# runner could supply opcode plugins the wheel lacks, as the Linux wheels
+# did in 0.2.0 and 0.2.1. Here every Csound DLL except csound64.dll is moved
+# out of the install before building, so tests see only what the wheel ships.
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_wheels:
+    name: Build wheels on windows-latest (no plugins)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Csound 7
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP csound.zip
+          $dir = Join-Path $env:RUNNER_TEMP csound
+          Invoke-WebRequest https://github.com/csound/csound/releases/download/7.0.0/csound-windows-7.0.0.zip -OutFile $zip
+          Expand-Archive $zip -DestinationPath $dir
+          $exe = Get-ChildItem $dir -Recurse -Filter *.exe | Select-Object -First 1
+          # Inno Setup installer; pin the path CMakeLists.txt expects.
+          Start-Process $exe.FullName -Wait -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/DIR="C:\Program Files\Csound7_x64"'
+          Get-ChildItem 'C:\Program Files\Csound7_x64' -Recurse -Include csound64.*,csound.h | Select-Object FullName
+
+      # The build needs only include/, lib/csound64.lib and csound64.dll,
+      # which delvewheel bundles on its own.
+      - name: Hide Csound plugins
+        shell: pwsh
+        run: |
+          $root = 'C:\Program Files\Csound7_x64'
+          $hidden = Join-Path $env:RUNNER_TEMP csound-hidden
+          $empty = Join-Path $env:RUNNER_TEMP csound-no-plugins
+          New-Item -ItemType Directory -Force $hidden, $empty | Out-Null
+          $dlls = Get-ChildItem $root -Recurse -Filter *.dll | Where-Object Name -ne 'csound64.dll'
+          foreach ($f in $dlls) {
+            $dest = Join-Path $hidden $f.FullName.Substring($root.Length + 1)
+            New-Item -ItemType Directory -Force (Split-Path $dest) | Out-Null
+            Move-Item $f.FullName $dest
+          }
+          Write-Host "moved $($dlls.Count) DLLs out of $root"
+          $dlls | Group-Object DirectoryName | Select-Object Count, Name | Format-Table -AutoSize
+          if (-not (Get-ChildItem $root -Recurse -Filter csound64.dll)) { throw "csound64.dll missing" }
+          "OPCODE7DIR64=$empty" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
+      - name: Build wheels
+        # 4.3.1+ ships the final CPython 3.15.0.
+        uses: pypa/cibuildwheel@v4.3.4
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wheels-windows-noplugins
+          path: ./wheelhouse/*.whl
