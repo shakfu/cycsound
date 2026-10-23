@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.3]
+
 ### Removed
 
 - The `STATIC` CMake option and the `make release` and `make wheel-static` targets. Since the Csound 7 port, `STATIC=ON` stopped configure with a fatal error on every platform, so both targets always failed. Release wheels come from CI.
