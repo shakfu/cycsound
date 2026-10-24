@@ -81,7 +81,7 @@ def test_file_open_notification_and_fallbacks():
     assert c.table_length(2) > 0
 
 
-# csound64.dll links a static CRT (/MT): no FILE* from outside it is valid there.
+# csound7_64.dll links a static CRT (/MT): no FILE* from outside it is valid there.
 @pytest.mark.skipif(sys.platform == "win32", reason="Csound uses a private static CRT")
 def test_open_file_callback_returns_file_pointer(tmp_path):
     numbers = tmp_path / "numbers.txt"

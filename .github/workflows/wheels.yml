@@ -40,7 +40,7 @@ jobs:
           $exe = Get-ChildItem $dir -Recurse -Filter *.exe | Select-Object -First 1
           # Inno Setup installer; pin the path CMakeLists.txt expects.
           Start-Process $exe.FullName -Wait -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/DIR="C:\Program Files\Csound7_x64"'
-          Get-ChildItem 'C:\Program Files\Csound7_x64' -Recurse -Include csound64.*,csound.h | Select-Object FullName
+          Get-ChildItem 'C:\Program Files\Csound7_x64' -Recurse -Include csound7_64.*,csound.h | Select-Object FullName
 
       - name: Build wheels
         # 4.3.1+ ships the final CPython 3.15.0.

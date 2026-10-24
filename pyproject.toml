@@ -100,6 +100,6 @@ repair-wheel-command = "auditwheel repair --exclude libasound.so.2 --exclude lib
 environment = { MACOSX_DEPLOYMENT_TARGET = "12.0" }
 
 [tool.cibuildwheel.windows]
-# Csound 7 is installed by the workflow; bundle csound64.dll into the wheel.
+# Csound 7 is installed by the workflow; bundle csound7_64.dll into the wheel.
 before-build = "pip install delvewheel"
 repair-wheel-command = "delvewheel repair --add-path \"C:/Program Files/Csound7_x64/bin\" -w {dest_dir} {wheel}"

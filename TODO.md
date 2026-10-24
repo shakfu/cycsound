@@ -55,7 +55,7 @@
      ```
      uv run --isolated --no-project --with <wheel> python <repo>\scripts\check_rtaudio.py pa
      ```
-  7. If step 4 or 5 finds no modules, set `$env:OPCODE7DIR64` to the installed `cycsound\plugins` path and repeat. If that passes, `csound64.dll` does not see variables set from Python, probably because it links a static C runtime (inferred: it imports no CRT DLL). The fix then belongs in `__init__.py`, for example `set_global_env` or the `opcodedir` constructor argument.
+  7. If step 4 or 5 finds no modules, set `$env:OPCODE7DIR64` to the installed `cycsound\plugins` path and repeat. If that passes, `csound7_64.dll` does not see variables set from Python, probably because it links a static C runtime (inferred: it imports no CRT DLL). The fix then belongs in `__init__.py`, for example `set_global_env` or the `opcodedir` constructor argument.
 
 ## Medium
 

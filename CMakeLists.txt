@@ -41,7 +41,8 @@ elseif(WIN32)
     set(CSOUND_PLUGIN_DIR "${CSOUND_ROOT}/plugins64" CACHE PATH
         "Directory of the Csound 7 plugin DLLs to ship")
 
-    find_library(CSOUND_LIB csound64 PATHS ${CSOUND_LIBRARY_DIR} REQUIRED)
+    # csound64 is Csound 6's name; matching it could link the wrong major.
+    find_library(CSOUND_LIB csound7_64 PATHS ${CSOUND_LIBRARY_DIR} REQUIRED)
     set(CSOUND_LIBRARIES ${CSOUND_LIB})
 
 elseif(UNIX)
