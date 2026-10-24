@@ -9,8 +9,10 @@ import sys
 # the macOS binary looks in /Applications/Csound, a possibly mismatched install.
 if "OPCODE7DIR64" not in os.environ:
     _here = os.path.dirname(os.path.abspath(__file__))
+    # An editable install keeps the installed plugins apart from this file,
+    # so look along the whole package path.
     for _plugins in (
-        os.path.join(_here, "plugins"),
+        *(os.path.join(_dir, "plugins") for _dir in __path__),
         os.path.join(os.path.dirname(os.path.dirname(_here)),
                      "vendor", "plugins"),
     ):
@@ -18,6 +20,22 @@ if "OPCODE7DIR64" not in os.environ:
             os.environ["OPCODE7DIR64"] = _plugins
             break
     del _here, _plugins
+
+# A Windows source build links csound7_64.dll from the Csound 7 install that
+# CMake recorded in _dlldir.txt; wheels bundle the DLL instead. It sits next to
+# _core, which an editable install keeps apart from this file, so search the
+# whole package path.
+if sys.platform == "win32":
+    for _dir in __path__:
+        _dlldir = os.path.join(_dir, "_dlldir.txt")
+        if os.path.exists(_dlldir):
+            with open(_dlldir) as _f:
+                _bin = _f.read().strip()
+            if os.path.isdir(_bin):
+                os.add_dll_directory(_bin)
+            del _f, _bin
+            break
+    del _dir, _dlldir
 
 # On Linux the Csound 7 release ships its opcode library as external plugins
 # that are dlopen()ed by libcsound64 at csoundCreate() time. Those plugins

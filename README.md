@@ -74,13 +74,15 @@ make build    # auto-vendors the Csound 7 runtime on first build
 To vendor manually (or pin a different tag), run the script directly:
 
 ```bash
-scripts/vendor_csound7.sh                 # default tag (7.0.0)
-scripts/vendor_csound7.sh 7.0.0-beta.18   # explicit tag
+python scripts/vendor_csound7.py                 # default tag (7.0.0)
+python scripts/vendor_csound7.py 7.0.0-beta.18   # explicit tag
 ```
 
-> Windows builds still reference a system Csound 7 install in `CMakeLists.txt`
-> (`C:/Program Files/Csound7_x64`, overridable via `CSOUND_ROOT`) and have not
-> been updated for the vendoring flow.
+On Windows the release ships only an installer, which needs admin rights (it
+sets `OPCODE7DIR64` machine-wide). The script runs it silently as a system
+install into `C:/Program Files/Csound7_x64`, raising a UAC prompt when not
+elevated; CI uses the same script. Set `CSOUND_ROOT` to build against an
+install elsewhere.
 
 ## Command-Line Interface
 

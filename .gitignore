@@ -5,6 +5,7 @@ __pycache__
 .venv
 cycsound.c
 dist/
+wheelhouse/
 build/
 tests/test.aif
 
@@ -65,5 +66,5 @@ dkms.conf
 .claude
 CLAUDE.md
 
-# vendored Csound 7 framework (fetched via scripts/vendor_csound7.sh)
+# vendored Csound 7 framework (fetched via scripts/vendor_csound7.py)
 vendor/

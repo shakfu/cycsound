@@ -87,7 +87,7 @@ build-frontend = "build"
 # The vendored libcsound64.so needs GLIBC_2.29, above the manylinux_2_28 limit.
 manylinux-x86_64-image = "manylinux_2_34"
 # The Csound 7 release binaries are vendored by the build itself
-# (scripts/vendor_csound7.sh, run from CMake); only its tooling is needed here.
+# (scripts/vendor_csound7.py, run from CMake); only its tooling is needed here.
 before-all = [
     "yum install -y unzip || (apt-get update && apt-get install -y unzip)",
 ]

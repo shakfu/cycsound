@@ -6,9 +6,13 @@
 
 .PHONY: all sync build rebuild test test-cli vendor clean distclean wheel sdist dist-ci check publish publish-test help
 
-# Vendored Csound 7 runtime (downloaded on demand by scripts/vendor_csound7.sh):
-# a CsoundLib64 framework on macOS, a shared library on Linux.
-ifeq ($(shell uname),Darwin)
+# Vendored Csound 7 runtime (downloaded on demand by scripts/vendor_csound7.py):
+# a CsoundLib64 framework on macOS, a shared library on Linux. On Windows it
+# is a system install in C:/Program Files/Csound7_x64 (a path make cannot
+# hold as a target), tracked by vendor/.tag alone.
+ifeq ($(OS),Windows_NT)
+VENDOR_FRAMEWORK := vendor/.tag
+else ifeq ($(shell uname),Darwin)
 VENDOR_FRAMEWORK := vendor/CsoundLib64.framework
 else
 VENDOR_FRAMEWORK := vendor/lib/libcsound64.so
@@ -20,13 +24,20 @@ all: build
 # Download/vendor the Csound 7 runtime if it is missing or its vendor/.tag
 # differs from the script's default TAG. This is an order-only prerequisite
 # of the build/test targets, so it runs before anything that needs it.
-VENDOR_TAG := $(shell sed -n 's/^TAG="[$$]{1:-\(.*\)}"/\1/p' scripts/vendor_csound7.sh)
+VENDOR_TAG := $(subst ",,$(word 3,$(shell grep "^TAG = " scripts/vendor_csound7.py)))
 ifneq ($(shell cat vendor/.tag 2>/dev/null),$(VENDOR_TAG))
 .PHONY: $(VENDOR_FRAMEWORK)
 endif
+# On Windows the stamp cannot see Csound 7 being uninstalled; check the DLL.
+ifeq ($(OS),Windows_NT)
+CSOUND_ROOT ?= C:/Program Files/Csound7_x64
+ifneq ($(shell test -f "$(CSOUND_ROOT)/bin/csound7_64.dll" && echo ok),ok)
+.PHONY: $(VENDOR_FRAMEWORK)
+endif
+endif
 
 $(VENDOR_FRAMEWORK):
-	@scripts/vendor_csound7.sh
+	@uv run --no-project python scripts/vendor_csound7.py
 
 vendor: $(VENDOR_FRAMEWORK)
 
@@ -49,11 +60,19 @@ test: | $(VENDOR_FRAMEWORK)
 test-cli: | $(VENDOR_FRAMEWORK)
 	@uv run python -m pytest tests/test_cli.py -v
 
-# Build a wheel for local use. It is not repaired (delocate/auditwheel/
-# delvewheel), so it links the vendored runtime by absolute path. Release
-# wheels come from CI; see dist-ci.
+# Build a wheel for local use. On Windows it is repaired with delvewheel,
+# which bundles csound7_64.dll, so it runs without Csound 7 installed.
+# Elsewhere it is not repaired (delocate/auditwheel), so it links the vendored
+# runtime by absolute path. Release wheels come from CI; see dist-ci.
+ifeq ($(OS),Windows_NT)
+wheel: | $(VENDOR_FRAMEWORK)
+	@rm -rf build/wheel-raw
+	@uv build --wheel -o build/wheel-raw -C cmake.define.CYCSOUND_DLLDIR=OFF
+	@uvx delvewheel repair --add-path "$(CSOUND_ROOT)/bin" -w dist build/wheel-raw/*.whl
+else
 wheel:
 	@uv build --wheel
+endif
 
 # Build source distribution
 sdist:

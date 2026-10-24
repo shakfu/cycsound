@@ -7,7 +7,7 @@ find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 if(APPLE)
     # macOS: Use the vendored Csound 7 CsoundLib64 framework. If it is missing,
     # fetch it automatically (over plain HTTPS, no GitHub account required) by
-    # running scripts/vendor_csound7.sh.
+    # running scripts/vendor_csound7.py.
     set(CSOUND_FRAMEWORK "${CMAKE_SOURCE_DIR}/vendor/CsoundLib64.framework")
     if(NOT EXISTS ${CSOUND_FRAMEWORK}
        OR NOT EXISTS "${CMAKE_SOURCE_DIR}/vendor/plugins"
@@ -15,27 +15,42 @@ if(APPLE)
         message(STATUS "Vendored CsoundLib64 framework or plugins not found; fetching Csound 7...")
         execute_process(
             COMMAND ${CMAKE_COMMAND} -E env "CMAKE=${CMAKE_COMMAND}"
-                bash "${CMAKE_SOURCE_DIR}/scripts/vendor_csound7.sh"
+                ${Python_EXECUTABLE} "${CMAKE_SOURCE_DIR}/scripts/vendor_csound7.py"
             RESULT_VARIABLE VENDOR_RESULT)
         if(NOT VENDOR_RESULT EQUAL 0 OR NOT EXISTS ${CSOUND_FRAMEWORK})
             message(FATAL_ERROR
                 "Failed to vendor the Csound 7 framework via "
-                "scripts/vendor_csound7.sh. Run it manually and rebuild.")
+                "scripts/vendor_csound7.py. Run it manually and rebuild.")
         endif()
     endif()
     set(CSOUND_INCLUDE_DIR "${CSOUND_FRAMEWORK}/Headers")
 
     # Dynamic linking against the vendored framework. Its install id has
-    # been repointed to this absolute path by scripts/vendor_csound7.sh,
+    # been repointed to this absolute path by scripts/vendor_csound7.py,
     # so no rpath is required at runtime.
     set(CSOUND_LIBRARIES "-framework CsoundLib64")
     set(CSOUND_FRAMEWORK_DIR "${CMAKE_SOURCE_DIR}/vendor")
 
 elseif(WIN32)
-    # Windows: use a Csound 7 installation (the release ships an installer;
-    # override CSOUND_ROOT if it was installed elsewhere).
+    # Windows: use a Csound 7 system install. The release ships only an
+    # installer that needs admin rights; scripts/vendor_csound7.py runs it
+    # silently (as CI does) if Csound 7 is missing. Override CSOUND_ROOT if it
+    # was installed elsewhere.
     set(CSOUND_ROOT "C:/Program Files/Csound7_x64" CACHE PATH
         "Root of the Csound 7 installation")
+    if(NOT EXISTS "${CSOUND_ROOT}/bin/csound7_64.dll")
+        message(STATUS "Csound 7 not found in ${CSOUND_ROOT}; installing Csound 7...")
+        execute_process(
+            COMMAND ${Python_EXECUTABLE}
+                "${CMAKE_SOURCE_DIR}/scripts/vendor_csound7.py"
+            RESULT_VARIABLE VENDOR_RESULT)
+        if(NOT VENDOR_RESULT EQUAL 0
+           OR NOT EXISTS "${CSOUND_ROOT}/bin/csound7_64.dll")
+            message(FATAL_ERROR
+                "Failed to install Csound 7 via "
+                "scripts/vendor_csound7.py. Run it manually and rebuild.")
+        endif()
+    endif()
     set(CSOUND_INCLUDE_DIR "${CSOUND_ROOT}/include/csound")
     set(CSOUND_LIBRARY_DIR "${CSOUND_ROOT}/lib64")
     set(CSOUND_PLUGIN_DIR "${CSOUND_ROOT}/plugins64" CACHE PATH
@@ -54,13 +69,13 @@ elseif(UNIX)
     if(NOT EXISTS "${CSOUND_VENDOR_LIB_DIR}/libcsound64.so")
         message(STATUS "Vendored Csound 7 library not found; fetching Csound 7...")
         execute_process(
-            COMMAND bash "${CMAKE_SOURCE_DIR}/scripts/vendor_csound7.sh"
+            COMMAND ${Python_EXECUTABLE} "${CMAKE_SOURCE_DIR}/scripts/vendor_csound7.py"
             RESULT_VARIABLE VENDOR_RESULT)
         if(NOT VENDOR_RESULT EQUAL 0
            OR NOT EXISTS "${CSOUND_VENDOR_LIB_DIR}/libcsound64.so")
             message(FATAL_ERROR
                 "Failed to vendor the Csound 7 library via "
-                "scripts/vendor_csound7.sh. Run it manually and rebuild.")
+                "scripts/vendor_csound7.py. Run it manually and rebuild.")
         endif()
     endif()
 
@@ -114,6 +129,22 @@ endif()
 
 # Install the extension module
 install(TARGETS _core DESTINATION cycsound)
+
+# Windows has no rpath and Python ignores PATH for extension dependencies, so
+# record where csound7_64.dll lives for a source build to add as a DLL
+# directory. Wheels that bundle the DLL (delvewheel) turn this off.
+if(DEFINED ENV{CIBUILDWHEEL})
+    set(_dlldir_default OFF)
+else()
+    set(_dlldir_default ON)
+endif()
+option(CYCSOUND_DLLDIR "Record the Csound DLL directory (Windows)"
+    ${_dlldir_default})
+if(WIN32 AND CYCSOUND_DLLDIR)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/_dlldir.txt" "${CSOUND_ROOT}/bin")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/_dlldir.txt"
+        DESTINATION cycsound)
+endif()
 
 # Ship the Csound plugins: the realtime audio/MIDI drivers on all platforms,
 # and on Linux the opcode library too.

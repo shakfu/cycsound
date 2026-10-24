@@ -25,13 +25,10 @@ jobs:
       - name: Install Csound 7
         shell: pwsh
         run: |
-          $zip = Join-Path $env:RUNNER_TEMP csound.zip
-          $dir = Join-Path $env:RUNNER_TEMP csound
-          Invoke-WebRequest https://github.com/csound/csound/releases/download/7.0.0/csound-windows-7.0.0.zip -OutFile $zip
-          Expand-Archive $zip -DestinationPath $dir
-          $exe = Get-ChildItem $dir -Recurse -Filter *.exe | Select-Object -First 1
-          # Inno Setup installer; pin the path CMakeLists.txt expects.
-          Start-Process $exe.FullName -Wait -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/DIR="C:\Program Files\Csound7_x64"'
+          # Silent admin install to C:\Program Files\Csound7_x64, where
+          # CMakeLists.txt expects it.
+          python scripts/vendor_csound7.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           Get-ChildItem 'C:\Program Files\Csound7_x64' -Recurse -Include csound7_64.*,csound.h | Select-Object FullName
 
       # The build needs include/, lib64/csound7_64.lib, csound7_64.dll (which

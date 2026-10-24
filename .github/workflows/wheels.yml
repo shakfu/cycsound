@@ -26,20 +26,17 @@ jobs:
       - uses: actions/checkout@v7
 
       # Linux and macOS builds vendor the Csound 7 release binaries during
-      # the CMake configure step (scripts/vendor_csound7.sh). Package managers
+      # the CMake configure step (scripts/vendor_csound7.py). Package managers
       # (apt, Homebrew, choco) still ship Csound 6, which this wrapper does not
       # target. cibuildwheel settings live in pyproject.toml.
       - name: Install Csound 7 (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $zip = Join-Path $env:RUNNER_TEMP csound.zip
-          $dir = Join-Path $env:RUNNER_TEMP csound
-          Invoke-WebRequest https://github.com/csound/csound/releases/download/7.0.0/csound-windows-7.0.0.zip -OutFile $zip
-          Expand-Archive $zip -DestinationPath $dir
-          $exe = Get-ChildItem $dir -Recurse -Filter *.exe | Select-Object -First 1
-          # Inno Setup installer; pin the path CMakeLists.txt expects.
-          Start-Process $exe.FullName -Wait -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/DIR="C:\Program Files\Csound7_x64"'
+          # Silent admin install to C:\Program Files\Csound7_x64, where
+          # CMakeLists.txt expects it.
+          python scripts/vendor_csound7.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           Get-ChildItem 'C:\Program Files\Csound7_x64' -Recurse -Include csound7_64.*,csound.h | Select-Object FullName
 
       - name: Build wheels

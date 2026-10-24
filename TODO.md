@@ -67,4 +67,4 @@
 
 ## Low
 
-- [ ] Report upstream: the `macos_build_installer` job in Csound's `.github/workflows/csound_builds.yml` builds PortMidi, PortAudio and liblo without `-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0`, so the framework's `libs/` copies require macOS 26.0. Once a release fixes this, drop `build_macos_deps` from `scripts/vendor_csound7.sh`.
+- [ ] Report upstream: the `macos_build_installer` job in Csound's `.github/workflows/csound_builds.yml` builds PortMidi, PortAudio and liblo without `-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0`, so the framework's `libs/` copies require macOS 26.0. Once a release fixes this, drop `build_macos_deps` from `scripts/vendor_csound7.py`.
