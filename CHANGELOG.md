@@ -6,10 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Fixed
-
-- Windows builds failed after upstream replaced the Csound 7.0.0 Windows installer on 2026-10-23 ([csound@eff60d5](https://github.com/csound/csound/commit/eff60d582)). It now installs `csound7_64.dll` and `lib64/csound7_64.lib` instead of `csound64.dll` and `lib/csound64.lib`. CMake looks only for `csound7_64`, because `csound64` belongs to Csound 6. A Csound 7 install from before 2026-10-23 must be upgraded.
-
 ## [0.2.3]
 
 ### Removed
@@ -24,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `scripts/check_rtaudio.py [module]` plays a tone to `-odac` and exits 1 if Csound falls back to its dummy audio module, which the offline test suite cannot detect.
 
 ### Fixed
+
+- Windows builds failed after upstream replaced the Csound 7.0.0 Windows installer on 2026-10-23 ([csound@eff60d5](https://github.com/csound/csound/commit/eff60d582)). It now installs `csound7_64.dll` and `lib64/csound7_64.lib` instead of `csound64.dll` and `lib/csound64.lib`. CMake looks only for `csound7_64`, because `csound64` belongs to Csound 6. A Csound 7 install from before 2026-10-23 must be upgraded.
 
 - macOS and Windows wheels now ship the Csound driver plugins in `cycsound/plugins/`, and the package points `OPCODE7DIR64` there on every platform. 0.2.2 shipped only the Csound library, so `-odac` fell back to the dummy audio module with no error (`start()` returns 0). On macOS, an unset `OPCODE7DIR64` also made Csound load plugins from `/Applications/Csound`, which may be a different version. The Windows plugins link only system DLLs.
 
