@@ -37,7 +37,7 @@ elseif(WIN32)
     set(CSOUND_ROOT "C:/Program Files/Csound7_x64" CACHE PATH
         "Root of the Csound 7 installation")
     set(CSOUND_INCLUDE_DIR "${CSOUND_ROOT}/include/csound")
-    set(CSOUND_LIBRARY_DIR "${CSOUND_ROOT}/lib")
+    set(CSOUND_LIBRARY_DIR "${CSOUND_ROOT}/lib64")
     set(CSOUND_PLUGIN_DIR "${CSOUND_ROOT}/plugins64" CACHE PATH
         "Directory of the Csound 7 plugin DLLs to ship")
 

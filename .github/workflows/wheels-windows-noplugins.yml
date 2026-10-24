@@ -34,7 +34,7 @@ jobs:
           Start-Process $exe.FullName -Wait -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/DIR="C:\Program Files\Csound7_x64"'
           Get-ChildItem 'C:\Program Files\Csound7_x64' -Recurse -Include csound7_64.*,csound.h | Select-Object FullName
 
-      # The build needs include/, lib/csound7_64.lib, csound7_64.dll (which
+      # The build needs include/, lib64/csound7_64.lib, csound7_64.dll (which
       # delvewheel bundles) and the plugins64 DLLs (installed by CMake).
       - name: Hide Csound plugins
         shell: pwsh
